@@ -124,6 +124,8 @@ The production app is exposed at `http://localhost:3001`.
 The production Docker stack reads `.env.production.local`, so production uses
 the live EasyPost API on deploy.
 
+When the app is reached through a reverse proxy that terminates HTTPS (for example Tailscale Serve at `https://<machine>.<tailnet>.ts.net` proxying to `http://localhost:3001`), React Router's form-action origin check rejects every save with "Bad Request" unless the proxy hostname is listed in `allowedActionOrigins` in `react-router.config.ts`. Add any other proxy hostname there and rebuild.
+
 Docker may label the built image as `tcgplayer-automation-app-app`. That image name comes from the repository directory and service name, not the Compose project name. The actual project names are `tcgplayer-automation-prod`, `tcgplayer-automation-dev`, and `tcgplayer-automation-db`.
 
 When you deploy through `npm run prod:deploy`, `npm run prod:update`, `npm run prod:start`, or `npm run prod:restart`, the repo now fetches `origin/master` and refuses to run unless the working tree is clean and local `HEAD` exactly matches `origin/master`. This keeps production aligned with the remote `master` branch instead of whichever local branch happens to be checked out.

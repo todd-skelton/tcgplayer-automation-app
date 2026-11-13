@@ -23,6 +23,7 @@ import {
   type InventoryFiltersRef,
 } from "../components/InventoryFilters";
 import { InventoryEntryTable } from "../components/InventoryEntryTable";
+import { getConditionShortcutDirection } from "../components/quantityKeyboard";
 import {
   INVENTORY_CONDITION_ORDER,
   type InventorySelectableCondition,
@@ -173,19 +174,24 @@ export default function InventoryManagerRoute() {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      // React's root listener also lives on document, so a focused quantity
+      // input that already handled this shortcut cannot stop it reaching here.
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      const conditionDirection = getConditionShortcutDirection(event);
+      if (conditionDirection) {
+        event.preventDefault();
+        preserveFocusAcrossConditionChange(
+          conditionDirection === "previous"
+            ? selectPreviousCondition
+            : selectNextCondition,
+        );
+        return;
+      }
+
       if (event.altKey || event.metaKey) {
-        return;
-      }
-
-      if (event.ctrlKey && event.key === "ArrowUp") {
-        event.preventDefault();
-        preserveFocusAcrossConditionChange(selectPreviousCondition);
-        return;
-      }
-
-      if (event.ctrlKey && event.key === "ArrowDown") {
-        event.preventDefault();
-        preserveFocusAcrossConditionChange(selectNextCondition);
         return;
       }
 
@@ -281,7 +287,7 @@ export default function InventoryManagerRoute() {
                 </Select>
               </FormControl>
               <Chip
-                label="Shortcut: Ctrl+Up / Ctrl+Down"
+                label="Shortcut: Ctrl+Up / Ctrl+Down (Cmd on Mac)"
                 variant="outlined"
                 color="info"
               />

@@ -492,6 +492,8 @@ export const inventoryBatchesRepository = {
         return null;
       }
 
+      const lockedSkus = pendingRows.map((row) => row.sku);
+
       const createdBatch = await queryOne<{ batchNumber: number }>(
         `INSERT INTO inventory_batches (status, source_type, source_label)
         VALUES ('pending', 'pending_inventory', 'Inventory Manager')
@@ -530,12 +532,17 @@ export const inventoryBatchesRepository = {
           NULL,
           created_at,
           updated_at
-        FROM pending_inventory`,
-        [createdBatch.batchNumber],
+        FROM pending_inventory
+        WHERE sku = ANY($2::int[])`,
+        [createdBatch.batchNumber, lockedSkus],
         client,
       );
 
-      await execute(`DELETE FROM pending_inventory`, [], client);
+      await execute(
+        `DELETE FROM pending_inventory WHERE sku = ANY($1::int[])`,
+        [lockedSkus],
+        client,
+      );
 
       return inventoryBatchesRepository.findByBatchNumber(
         createdBatch.batchNumber,

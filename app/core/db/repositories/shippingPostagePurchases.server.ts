@@ -43,7 +43,8 @@ export interface CreateShippingPostagePurchaseInput {
 }
 
 export const shippingPostagePurchasesRepository = {
-  async findLatestSuccessfulOutboundByOrderNumbers(
+  async findLatestSuccessfulByOrderNumbers(
+    direction: ShippingPostageDirection,
     orderNumbers: string[],
     executor?: Queryable,
   ): Promise<ShippingPostagePurchaseRecord[]> {
@@ -74,11 +75,11 @@ export const shippingPostagePurchasesRepository = {
         error_message AS "errorMessage",
         created_at AS "createdAt"
       FROM shipping_postage_purchases
-      WHERE direction = 'outbound'
+      WHERE direction = $1
         AND status = 'purchased'
-        AND order_numbers && $1::text[]
+        AND order_numbers && $2::text[]
       ORDER BY created_at DESC, id DESC`,
-      [normalizedOrderNumbers],
+      [direction, normalizedOrderNumbers],
       executor,
     );
   },

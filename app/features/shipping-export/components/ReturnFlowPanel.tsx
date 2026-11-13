@@ -39,12 +39,94 @@ interface ReturnFlowPanelProps {
   outboundReturnPurchaseEntry: ShippingPostagePurchaseEntry | null;
   returnOnlyPurchaseEntry: ShippingPostagePurchaseEntry | null;
   isLoadingReturnOrder: boolean;
+  isLoadingReturnLabels: boolean;
   isPurchasingReturn: boolean;
   onOrderNumberChange: (value: string) => void;
   onLookupOrder: () => void;
   onReturnFlowTypeChange: (type: ReturnFlowType) => void;
   onReturnServiceChange: (service: EasyPostService) => void;
   onBuyLabels: () => void;
+}
+
+function isPurchased(entry: ShippingPostagePurchaseEntry | null): boolean {
+  return entry?.result.status === "purchased";
+}
+
+function formatPurchasedAt(purchasedAt: string | undefined): string | null {
+  if (!purchasedAt) {
+    return null;
+  }
+
+  const date = new Date(purchasedAt);
+
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+}
+
+interface PurchasedLabelSummaryProps {
+  title: string;
+  entry: ShippingPostagePurchaseEntry;
+}
+
+function PurchasedLabelSummary({ title, entry }: PurchasedLabelSummaryProps) {
+  const { result, mode } = entry;
+  const purchasedAt = formatPurchasedAt(entry.purchasedAt);
+  const labelHref = result.labelPdfUrl ?? result.labelUrl;
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" gutterBottom>
+        {title}
+      </Typography>
+      <Stack spacing={1} alignItems="flex-start">
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Chip
+            label={result.status.toUpperCase()}
+            size="small"
+            color={
+              result.status === "purchased"
+                ? "success"
+                : result.status === "failed"
+                  ? "error"
+                  : "warning"
+            }
+          />
+          <Chip label={mode === "test" ? "TEST" : "PRODUCTION"} size="small" variant="outlined" />
+          {result.selectedRate && (
+            <Chip
+              label={`${result.selectedRate.service} ${result.selectedRate.rate} ${result.selectedRate.currency}`}
+              size="small"
+              variant="outlined"
+            />
+          )}
+        </Stack>
+        {purchasedAt && (
+          <Typography variant="caption" color="text.secondary">
+            Purchased {purchasedAt}
+          </Typography>
+        )}
+        {result.trackingCode && (
+          <Typography variant="body2">Tracking: {result.trackingCode}</Typography>
+        )}
+        {labelHref && (
+          <Button
+            component="a"
+            href={labelHref}
+            target="_blank"
+            rel="noreferrer"
+            variant="outlined"
+            size="small"
+          >
+            {result.labelPdfUrl ? "Open Label PDF" : "Open Label"}
+          </Button>
+        )}
+        {result.error && (
+          <Typography variant="body2" color="error">
+            {result.error}
+          </Typography>
+        )}
+      </Stack>
+    </Box>
+  );
 }
 
 export function ReturnFlowPanel({
@@ -59,6 +141,7 @@ export function ReturnFlowPanel({
   outboundReturnPurchaseEntry,
   returnOnlyPurchaseEntry,
   isLoadingReturnOrder,
+  isLoadingReturnLabels,
   isPurchasingReturn,
   onOrderNumberChange,
   onLookupOrder,
@@ -70,6 +153,20 @@ export function ReturnFlowPanel({
     config.easypostMode === "test"
       ? environmentStatus.hasTestApiKey
       : environmentStatus.hasProductionApiKey;
+  const hasOutboundLabel = isPurchased(outboundReturnPurchaseEntry);
+  const hasReturnLabel = isPurchased(returnOnlyPurchaseEntry);
+  const hasAnyLabelEntry = Boolean(outboundReturnPurchaseEntry || returnOnlyPurchaseEntry);
+  const wouldRepurchaseOutbound = returnFlowType === "round-trip" && hasOutboundLabel;
+  const wouldRepurchaseReturn = hasReturnLabel;
+  const buyButtonLabel = isPurchasingReturn
+    ? "Buying Labels..."
+    : returnFlowType === "round-trip"
+      ? wouldRepurchaseOutbound || wouldRepurchaseReturn
+        ? "Buy Another Outbound + Return Label"
+        : "Buy Outbound + Return Labels"
+      : wouldRepurchaseReturn
+        ? "Buy Another Return Label"
+        : "Buy Return Label";
 
   return (
     <Stack spacing={3}>
@@ -131,6 +228,43 @@ export function ReturnFlowPanel({
             </Stack>
           </Box>
 
+          <Divider />
+
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Purchased Labels
+            </Typography>
+            {isLoadingReturnLabels ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={16} />
+                <Typography variant="body2" color="text.secondary">
+                  Checking for previously purchased labels...
+                </Typography>
+              </Stack>
+            ) : hasAnyLabelEntry ? (
+              <Stack spacing={2}>
+                {outboundReturnPurchaseEntry && (
+                  <PurchasedLabelSummary
+                    title="Outbound (seller → buyer)"
+                    entry={outboundReturnPurchaseEntry}
+                  />
+                )}
+                {returnOnlyPurchaseEntry && (
+                  <PurchasedLabelSummary
+                    title="Return (buyer → seller)"
+                    entry={returnOnlyPurchaseEntry}
+                  />
+                )}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No labels have been purchased for this order yet.
+              </Typography>
+            )}
+          </Box>
+
+          <Divider />
+
           <FormControl>
             <FormLabel>Return Postage Type</FormLabel>
             <RadioGroup
@@ -190,126 +324,32 @@ export function ReturnFlowPanel({
             </Alert>
           )}
 
+          {(wouldRepurchaseOutbound || wouldRepurchaseReturn) && !isLoadingReturnLabels && (
+            <Alert severity="warning">
+              {wouldRepurchaseOutbound && wouldRepurchaseReturn
+                ? "Outbound and return labels were already purchased for this order. Buying again will charge for new labels."
+                : wouldRepurchaseOutbound
+                  ? "An outbound label was already purchased for this order. Choose Return only to avoid buying another outbound label."
+                  : "A return label was already purchased for this order. Buying again will charge for a new label."}
+            </Alert>
+          )}
+
           <Box>
             <Button
               variant="contained"
               color={config.easypostMode === "test" ? "warning" : "primary"}
               onClick={onBuyLabels}
-              disabled={!selectedModeHasApiKey || isPurchasingReturn || !returnShipment}
+              disabled={
+                !selectedModeHasApiKey ||
+                isPurchasingReturn ||
+                isLoadingReturnLabels ||
+                !returnShipment
+              }
               startIcon={isPurchasingReturn ? <CircularProgress color="inherit" size={18} /> : undefined}
             >
-              {isPurchasingReturn
-                ? "Buying Labels..."
-                : returnFlowType === "round-trip"
-                  ? "Buy Outbound + Return Labels"
-                  : "Buy Return Label"}
+              {buyButtonLabel}
             </Button>
           </Box>
-
-          {(outboundReturnPurchaseEntry || returnOnlyPurchaseEntry) && (
-            <>
-              <Divider />
-              <Typography variant="subtitle2">Purchased Labels</Typography>
-
-              {outboundReturnPurchaseEntry && (
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Outbound (seller → buyer)
-                  </Typography>
-                  <Stack spacing={1} alignItems="flex-start">
-                    <Chip
-                      label={outboundReturnPurchaseEntry.result.status.toUpperCase()}
-                      size="small"
-                      color={
-                        outboundReturnPurchaseEntry.result.status === "purchased"
-                          ? "success"
-                          : outboundReturnPurchaseEntry.result.status === "failed"
-                            ? "error"
-                            : "warning"
-                      }
-                    />
-                    {outboundReturnPurchaseEntry.result.trackingCode && (
-                      <Typography variant="body2">
-                        Tracking: {outboundReturnPurchaseEntry.result.trackingCode}
-                      </Typography>
-                    )}
-                    {outboundReturnPurchaseEntry.result.labelPdfUrl && (
-                      <Button
-                        component="a"
-                        href={outboundReturnPurchaseEntry.result.labelPdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        variant="outlined"
-                        size="small"
-                      >
-                        Open Outbound Label PDF
-                      </Button>
-                    )}
-                    {outboundReturnPurchaseEntry.result.error && (
-                      <Typography variant="body2" color="error">
-                        {outboundReturnPurchaseEntry.result.error}
-                      </Typography>
-                    )}
-                  </Stack>
-                </Box>
-              )}
-
-              {returnOnlyPurchaseEntry && (
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Return (buyer → seller)
-                  </Typography>
-                  <Stack spacing={1} alignItems="flex-start">
-                    <Chip
-                      label={returnOnlyPurchaseEntry.result.status.toUpperCase()}
-                      size="small"
-                      color={
-                        returnOnlyPurchaseEntry.result.status === "purchased"
-                          ? "success"
-                          : returnOnlyPurchaseEntry.result.status === "failed"
-                            ? "error"
-                            : "warning"
-                      }
-                    />
-                    {returnOnlyPurchaseEntry.result.trackingCode && (
-                      <Typography variant="body2">
-                        Tracking: {returnOnlyPurchaseEntry.result.trackingCode}
-                      </Typography>
-                    )}
-                    {returnOnlyPurchaseEntry.result.labelPdfUrl && (
-                      <Button
-                        component="a"
-                        href={returnOnlyPurchaseEntry.result.labelPdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        variant="outlined"
-                        size="small"
-                      >
-                        Open Return Label PDF
-                      </Button>
-                    )}
-                    {!returnOnlyPurchaseEntry.result.labelPdfUrl && returnOnlyPurchaseEntry.result.labelUrl && (
-                      <Button
-                        component="a"
-                        href={returnOnlyPurchaseEntry.result.labelUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        variant="outlined"
-                        size="small"
-                      >
-                        Open Return Label
-                      </Button>
-                    )}
-                    {returnOnlyPurchaseEntry.result.error && (
-                      <Typography variant="body2" color="error">
-                        {returnOnlyPurchaseEntry.result.error}
-                      </Typography>
-                    )}
-                  </Stack>
-                </Box>
-              )}
-            </>
-          )}
         </>
       )}
     </Stack>

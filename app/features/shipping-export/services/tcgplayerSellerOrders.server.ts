@@ -72,6 +72,23 @@ function getSingleOrderWarnings(order: SellerOrderDetail): string[] {
   ];
 }
 
+function getTrackingNumber(entries: SellerOrderDetail["trackingNumbers"]): string {
+  if (!Array.isArray(entries)) return "";
+
+  for (const entry of entries) {
+    const value =
+      typeof entry === "object" && entry !== null && "trackingNumber" in entry
+        ? entry.trackingNumber
+        : entry;
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
+
 export function mapSellerOrderDetailToShippingOrder(
   order: SellerOrderDetail,
 ): TcgPlayerShippingOrder {
@@ -95,7 +112,7 @@ export function mapSellerOrderDetailToShippingOrder(
     "Item Count": sumProductQuantity(order),
     "Value Of Products": order.transaction.productAmount,
     "Shipping Fee Paid": order.transaction.shippingAmount,
-    "Tracking #": order.trackingNumbers?.[0]?.trim() ?? "",
+    "Tracking #": getTrackingNumber(order.trackingNumbers),
     Carrier: "",
     products: order.products.map((p) => ({
       name: p.name,

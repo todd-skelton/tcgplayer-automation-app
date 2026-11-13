@@ -2,6 +2,7 @@ import { data } from "react-router";
 import { shippingPostagePurchasesRepository } from "~/core/db";
 import type { ShippingPostagePurchaseRecord } from "~/core/db/repositories/shippingPostagePurchases.server";
 import type {
+  ShippingPostageDirection,
   ShippingPostageLookupResult,
   ShippingPostageLookupRequest,
   ShippingPostageLookupRequestItem,
@@ -11,9 +12,14 @@ import type {
 type ShippingPostageLookupsActionDependencies = {
   postagePurchasesRepository?: Pick<
     typeof shippingPostagePurchasesRepository,
-    "findLatestSuccessfulOutboundByOrderNumbers"
+    "findLatestSuccessfulByOrderNumbers"
   >;
 };
+
+const POSTAGE_DIRECTIONS = new Set<ShippingPostageDirection>([
+  "outbound",
+  "return",
+]);
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -104,6 +110,14 @@ export function createShippingPostageLookupsAction(
 
     try {
       const payload = (await request.json()) as Partial<ShippingPostageLookupRequest>;
+      const direction = payload.direction ?? "outbound";
+
+      if (!POSTAGE_DIRECTIONS.has(direction)) {
+        return data(
+          { error: "direction must be either outbound or return." },
+          { status: 400 },
+        );
+      }
 
       if (!Array.isArray(payload.shipments) || payload.shipments.length === 0) {
         return data(
@@ -127,8 +141,10 @@ export function createShippingPostageLookupsAction(
       }
 
       const allOrderNumbers = shipments.flatMap((shipment) => shipment.orderNumbers);
-      const records =
-        await repository.findLatestSuccessfulOutboundByOrderNumbers(allOrderNumbers);
+      const records = await repository.findLatestSuccessfulByOrderNumbers(
+        direction,
+        allOrderNumbers,
+      );
       const recordsByExactOrderNumbers = new Map<string, ShippingPostagePurchaseRecord>();
 
       for (const record of records) {
@@ -155,7 +171,9 @@ export function createShippingPostageLookupsAction(
         results.push({
           shipmentReference: shipment.shipmentReference,
           mode: match.mode,
+          direction: match.direction,
           labelSize: match.labelSize,
+          purchasedAt: new Date(match.createdAt).toISOString(),
           result: {
             reference: shipment.shipmentReference,
             orderNumbers: shipment.orderNumbers,
@@ -178,7 +196,7 @@ export function createShippingPostageLookupsAction(
         });
       }
 
-      const response: ShippingPostageLookupResponse = { results };
+      const response: ShippingPostageLookupResponse = { direction, results };
 
       return data(response, { status: 200 });
     } catch (error) {

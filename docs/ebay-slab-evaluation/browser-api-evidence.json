@@ -1,0 +1,5240 @@
+{
+  "observedAt": "2026-09-05T20:15:52.409Z",
+  "alt": {
+    "page": "https://alt.xyz/itm/11020cc4-2783-494b-86b8-7d90c3ecc298/sold",
+    "search": {
+      "endpoint": "https://slhgwnurt6v1e84fp.a1.typesense.net/multi_search",
+      "payload": {
+        "searches": [
+          {
+            "q": "Ponyta",
+            "preset": "timestamp_desc",
+            "filter_by": "showResult:true",
+            "per_page": 50,
+            "page": 1
+          }
+        ]
+      },
+      "found": 1009,
+      "returned": 50
+    },
+    "requests": [
+      {
+        "url": "https://alt-platform-server.production.internal.onlyalt.com/graphql/SoldListing",
+        "payload": {
+          "operationName": "SoldListing",
+          "variables": {
+            "id": "11020cc4-2783-494b-86b8-7d90c3ecc298"
+          },
+          "query": "query SoldListing($id: ID!) {\n  externalTransaction(id: $id) {\n    ...ExternalTransactionFragment\n    __typename\n  }\n}\n\nfragment ExternalTransactionFragment on ExternalTransaction {\n  date\n  id\n  auctionHouse\n  auctionName\n  auctionType\n  displayPrice\n  label\n  fees\n  shipping\n  usdAmount\n  consolidatedSkippedReason\n  currency\n  asset {\n    ...AssetBase\n    __typename\n  }\n  attributes {\n    ...ExternalTransactionAttributesFragment\n    __typename\n  }\n  subjectToChange\n  __typename\n}\n\nfragment AssetBase on Asset {\n  id\n  name\n  year\n  subject\n  category\n  brand\n  variety\n  attributes {\n    cardNumber\n    printRun\n    __typename\n  }\n  __typename\n}\n\nfragment ExternalTransactionAttributesFragment on ExternalTransactionAttributes {\n  grade\n  gradingCompany\n  cert\n  url\n  autograph\n  imgThumbnailUrl\n  images {\n    position\n    url\n    __typename\n  }\n  __typename\n}"
+        },
+        "headerNames": [
+          "Referer",
+          "User-Agent",
+          "accept",
+          "allow-read-replica",
+          "authorization",
+          "content-type",
+          "idempotency-key",
+          "sec-ch-ua",
+          "sec-ch-ua-mobile",
+          "sec-ch-ua-platform"
+        ]
+      },
+      {
+        "url": "https://alt-platform-server.production.internal.onlyalt.com/graphql/AssetMarketTransactions",
+        "payload": {
+          "operationName": "AssetMarketTransactions",
+          "variables": {
+            "id": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+            "marketTransactionFilter": {
+              "allGrades": true,
+              "showSkipped": true,
+              "maxTransactionsPerGrade": 16
+            }
+          },
+          "query": "query AssetMarketTransactions($id: ID!, $marketTransactionFilter: MarketTransactionFilter!) {\n  asset(id: $id) {\n    ...AssetMarketTransactions\n    __typename\n  }\n}\n\nfragment AssetMarketTransactions on Asset {\n  id\n  marketTransactions(marketTransactionFilter: $marketTransactionFilter) {\n    ...MarketTransactionBase\n    __typename\n  }\n  __typename\n}\n\nfragment MarketTransactionBase on MarketTransaction {\n  id\n  date\n  auctionHouse\n  auctionType\n  price\n  attributes {\n    ...MarketTransactionAttributesBase\n    __typename\n  }\n  subjectToChange\n  consolidatedSkippedReason\n  label\n  __typename\n}\n\nfragment MarketTransactionAttributesBase on MarketTransactionAttributes {\n  gradeNumber\n  gradingCompany\n  url\n  autograph\n  __typename\n}"
+        },
+        "headerNames": [
+          "Referer",
+          "User-Agent",
+          "accept",
+          "allow-read-replica",
+          "authorization",
+          "content-type",
+          "idempotency-key",
+          "sec-ch-ua",
+          "sec-ch-ua-mobile",
+          "sec-ch-ua-platform"
+        ]
+      }
+    ],
+    "transactions": [
+      {
+        "id": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+        "date": "2026-09-05",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "27.46",
+        "attributes": {
+          "gradeNumber": "4.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/335037487554",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+        "date": "2026-09-04",
+        "auctionHouse": "Alt",
+        "auctionType": "AUCTION",
+        "price": "79.20",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "ab984d1c-d1ad-44ab-961e-fb3b3a63bba2",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "PENDING",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "7294423a-47c6-42f8-9dfa-30fb9d6c28a9",
+        "date": "2026-09-02",
+        "auctionHouse": "Heritage Auctions",
+        "auctionType": "AUCTION",
+        "price": "612.50",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://comics.ha.com/itm/memorabilia/trading-cards/pokemon-ponyta-60-1st-edition-base-set-psa-trading-card-game-gem-mint-10-wizards-of-the-coast-1999-/p/332635-35021.s?type=DA-DMC-AltPlatform-TradingCardGames-332635-08262026",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": true,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "fb4597b7-d651-4a08-8ddb-80ae74527179",
+        "date": "2026-09-01",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "625.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/327336167797",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c0b3b52b-82f9-4c6d-a5a1-274dafbd8c55",
+        "date": "2026-08-30",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "115.20",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "BGS",
+          "url": "https://www.fanaticscollect.com/weekly/2696d52c-9da1-11f1-a4a6-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "37f06cfc-0e23-4891-8469-ab631140ab9f",
+        "date": "2026-08-30",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "102.50",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/366624413453",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3e8085dd-4fe7-46fc-9d21-6d967a3bef92",
+        "date": "2026-08-30",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "81.21",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/327104197434",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4bc69e0c-e002-4464-ae29-a4479d436e12",
+        "date": "2026-08-30",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "42.57",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/298609904142",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "9fbbf8ea-cccf-46f1-b54b-17ebd2753115",
+        "date": "2026-08-26",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "66.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800536242083",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d417ac64-a32a-449a-bcae-828629cdd904",
+        "date": "2026-08-24",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "749.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/buy-now/311f5439-073d-419b-9b6a-19e0d096b710",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c856a638-2bd3-4463-82fa-539d8f3dfdc8",
+        "date": "2026-08-23",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "615.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/327296329226",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "aed7493c-2154-4645-9bbf-6452a151eb46",
+        "date": "2026-08-23",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "38.51",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/298486229852",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "9d2d9aa3-7b67-41e6-8454-4fca4b9c9299",
+        "date": "2026-08-22",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "99.99",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/287520908087",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8bc55c83-0d5a-40b7-96cc-524eebdf3c1c",
+        "date": "2026-08-21",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "669.69",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/307125529003",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2660b605-bc37-49c1-a8f5-3f23bd1025b4",
+        "date": "2026-08-20",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "164.99",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/336708469907",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2f38a1e8-41b5-43bd-b5d8-13c4620c136a",
+        "date": "2026-08-18",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "130.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/377308224695",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "44074766-508e-4d9d-8c32-6d15d9ade914",
+        "date": "2026-08-18",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "80.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/358922840943",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "15d08379-3a7b-4468-8d1a-26b3ab985544",
+        "date": "2026-08-16",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "105.60",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/weekly/e53810d4-8f89-11f1-bcfd-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a80fbeed-0e31-4171-8c61-8ca85ca6c484",
+        "date": "2026-08-16",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "54.10",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/128021068104",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b2e1c18e-0104-461d-bced-1e6574c3d1b4",
+        "date": "2026-08-16",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "50.40",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/weekly/e5330012-8f89-11f1-b931-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d0845edb-1ee9-4e0f-856c-fcdfb83589cd",
+        "date": "2026-08-15",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "89.99",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/127948519267",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5f6c361b-ca69-4d66-ba8c-1e92955b53dc",
+        "date": "2026-08-14",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "150.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/377322427446",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "860d8fc7-988a-4257-9fc8-56018c435e1b",
+        "date": "2026-08-13",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "175.42",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/278274023853",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a9a8ea68-da69-43a3-a4ec-5272c9d8928a",
+        "date": "2026-08-13",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "77.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/buy-now/c07a2792-6800-4d2e-83a1-cdc8f06af064",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "422644a5-0b1f-4eaa-8922-09cb079b1c78",
+        "date": "2026-08-12",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "175.58",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/278181097613",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "456830a7-7e20-461c-b856-5863e8810b60",
+        "date": "2026-08-12",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "143.50",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800467858236",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a3f6ec03-73a0-40b1-bf90-0254dfdd8d4f",
+        "date": "2026-08-12",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "37.99",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/358890136499",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d0e15ff0-40e6-4f29-a618-47bb3ea40a3b",
+        "date": "2026-08-11",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "100.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/286939985256",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "39b0ea6a-6c29-4145-be85-60507f2912d1",
+        "date": "2026-08-11",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "70.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/298504862667",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "18a9a42a-132e-4155-afe2-83012dd7c44e",
+        "date": "2026-08-11",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "70.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/188073073485",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "de566af7-c2d0-4958-9761-42e54b501ac0",
+        "date": "2026-08-09",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "47.89",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/287495384299",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "63aba93f-0640-4369-a247-01227c5a5cec",
+        "date": "2026-08-09",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "17.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/366581810522",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "24d019bb-2c97-4bca-b05b-6b6b22e5eac5",
+        "date": "2026-08-07",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "37.99",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/117129832885",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b78cf204-7c71-4b1e-9404-0712863aa444",
+        "date": "2026-08-06",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "140.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/187981047655",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "93ffb136-7e96-4716-954c-df96b8015c1d",
+        "date": "2026-08-05",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "43.38",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800430096493",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3f969c6d-088a-4c23-bb83-8b5bb07555fd",
+        "date": "2026-08-04",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "68.31",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137769",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "52d35b8b-c1d8-438d-96f0-4b58c9addba2",
+        "date": "2026-08-02",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "15.60",
+        "attributes": {
+          "gradeNumber": "0.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "590d6a27-a85e-4970-b570-dccaadc9037f",
+        "date": "2026-08-01",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "225.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137770",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "47a992a8-e47f-4ac2-8056-064b42afa7c7",
+        "date": "2026-07-29",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "120.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/336701223535",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e785f43c-e35f-4b87-b2f0-25ee39fad5da",
+        "date": "2026-07-29",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "55.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/188686947018",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "75c9a15f-b63b-49b9-b504-59f74fc82873",
+        "date": "2026-07-29",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "30.85",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/307069061204",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "55770f1d-7717-46e1-b15f-d86283cd0e82",
+        "date": "2026-07-28",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "77.50",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/366554819849",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "33b971de-37ca-45bf-a22d-1bf1c46ea200",
+        "date": "2026-07-28",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "60.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/188340513306",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "776a24ea-bbd4-4bd3-baa1-6b0844e4921b",
+        "date": "2026-07-24",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "695.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/358748847151",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "9f730a01-a8e8-4ef7-9a7d-cac50657473b",
+        "date": "2026-07-23",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "610.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/287461479499",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "75994e91-019b-4283-a2e8-9bfafd3015ca",
+        "date": "2026-07-23",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "60.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137714",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "1e9450e6-4336-429e-96d1-a348444ee7aa",
+        "date": "2026-07-22",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "649.99",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/117311873603",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "00d5dff7-60b6-4f58-bb92-e54e1927b9a2",
+        "date": "2026-07-21",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "129.89",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/397578980482",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "fda9e92e-8dbe-4011-be0b-26d1528ee66c",
+        "date": "2026-07-21",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "63.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137773",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4aa89a30-2c5c-4ade-85cb-72693b950c1c",
+        "date": "2026-07-20",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "160.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/127943558744",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c52dc69f-99b1-4de9-9cf6-5b85201af7b7",
+        "date": "2026-07-19",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "89.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/407062331296",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "de1e1f95-468e-4eb0-b965-8310b7e0c9da",
+        "date": "2026-07-19",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "31.20",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/47d8188a-7a84-11f1-a29c-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "82f71e74-01cc-49b9-825c-be6ad2a8070a",
+        "date": "2026-07-19",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "28.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/287452609292",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8208514b-3efc-45b4-b0a7-682d081fa00e",
+        "date": "2026-07-16",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "511.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800316561668",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3c95057a-fa25-4775-8a58-5339800abc02",
+        "date": "2026-07-15",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "51.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/377334392080",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d797eab9-054b-447d-9d3c-3ef9d67f17eb",
+        "date": "2026-07-14",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "85.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137762",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "bafac0e8-4ed3-493e-988d-5c17bfd1f419",
+        "date": "2026-07-14",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "85.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137699",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "869085c2-e2a2-495d-93b2-0c58e752f1ce",
+        "date": "2026-07-12",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "576.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/weekly/f013bb54-7588-11f1-879f-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2d66362e-499a-45f1-808f-ebebe6cbe21d",
+        "date": "2026-07-08",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "20.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/buy-now/d85d4533-ca19-45d5-acf8-d582b25d914c",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5972718b-8367-40b2-97a0-b3eb992f2201",
+        "date": "2026-07-06",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "23.50",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800263481890",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2723ee9f-1978-41f5-86cf-daf994bc6214",
+        "date": "2026-07-05",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "192.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/b2fd19fe-63a4-11f1-bd92-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "451d44d7-90e8-4c3b-8454-55dd3261035d",
+        "date": "2026-07-01",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "99.99",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137749",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a011810c-445d-4727-8666-c2ce36626fe5",
+        "date": "2026-06-28",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "65.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/127857780365",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "28473e94-50c8-44c5-87a9-72bbd1f343d3",
+        "date": "2026-06-28",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "38.01",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/117250372478",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "88e6765d-08bb-4d07-974b-98c8e7109dea",
+        "date": "2026-06-26",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "649.99",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/116988478397",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b400e3d6-bc7e-45b9-8c2f-b8dacb54580a",
+        "date": "2026-06-22",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "599.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/buy-now/0c11e4a5-6de6-4a74-9c5e-35a582572ea3",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e5bc72ea-df08-4006-8aba-9388afaad82b",
+        "date": "2026-06-21",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "610.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/287384726558",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "36562289-f38c-49bf-aebd-c8604dd1b256",
+        "date": "2026-06-20",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "39.23",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/117257013967",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2e171689-3f78-4305-9645-9c0b9c2c0940",
+        "date": "2026-06-11",
+        "auctionHouse": "Alt",
+        "auctionType": "AUCTION",
+        "price": "495.60",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "e2d8a9f8-84cd-41ae-abea-0b6b8a0cf058",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "67288f94-3d56-4142-aac5-f6fd84b3a825",
+        "date": "2026-06-10",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "40.99",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800112752270",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8af20c4b-37f0-42bc-9e50-87388ef93635",
+        "date": "2026-06-10",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "32.01",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/800112752415",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "aa3f0635-7cd1-4d39-ae85-7da37a5b4cd0",
+        "date": "2026-06-09",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "21.50",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/157969739875",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8d91e14b-49e1-4668-acd1-e0dac61d07e9",
+        "date": "2026-06-06",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "58.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/117212910836",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4a7c831a-f7d4-49c1-a1d9-56d86b19c0be",
+        "date": "2026-06-05",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "1197.46",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/157961503246",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5a5b7e58-9a3d-4ed0-b8e1-f92371f383c0",
+        "date": "2026-06-04",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "575.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/buy-now/07a7a70c-5ed7-47cd-bc6b-d491f5667034",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0c10a9a2-cc1a-406b-b2ba-a2cea8be9ad5",
+        "date": "2026-05-31",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "49.99",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/267681964856",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b44eb790-017e-49e1-ac27-cde58b5e253d",
+        "date": "2026-05-24",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "174.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/03bbc528-4e49-11f1-acdf-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "6a359afb-aedb-49d1-bf43-3a4a012db7e2",
+        "date": "2026-05-21",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "67.53",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137744",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f4bdb7be-6eb0-4fcd-b0ae-07cf60e1deec",
+        "date": "2026-05-21",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "67.53",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137755",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "fdd003cc-c4b8-44b1-994f-98165dfe5913",
+        "date": "2026-05-20",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "29.99",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/336562997331",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "19f37018-a844-4ae7-98c5-9098d4968552",
+        "date": "2026-05-17",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "57.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/406911718482",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0fbe388b-d955-4987-a779-892d14e75988",
+        "date": "2026-05-17",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "35.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/287318120261",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d78b18fe-f852-49a7-802d-c971111f1754",
+        "date": "2026-05-09",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "79.99",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/127792395859",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5be234fb-d28e-4ba3-a9b6-c71cd9b3aab4",
+        "date": "2026-05-08",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "59.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/507a140c-1907-4dbc-95cd-74151230e8c6",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "ab0602e6-f63f-422e-b1d2-9174694dfaff",
+        "date": "2026-05-02",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "213.75",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137708",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "100159da-cdac-4a94-88d2-c7a582c2370a",
+        "date": "2026-04-27",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "64.99",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/127665839860",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c3520742-d574-48f5-95a4-4fdfccbeb35c",
+        "date": "2026-04-26",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "59.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/5ffb14e6-f9e1-4366-a8c0-fc870a59926a",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "ed0ad54c-5d70-46a7-904f-0661cb3d1bf6",
+        "date": "2026-04-26",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "31.95",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/306876504406",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "52832793-3561-4963-9053-a957bcbe5573",
+        "date": "2026-04-22",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "50.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/296677525762",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "70da8dda-61bb-4915-a52c-a6155806cba8",
+        "date": "2026-04-22",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "26.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/389890656021",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8ec7cc2e-3fc8-45f5-818e-f8a52667effa",
+        "date": "2026-04-19",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "108.50",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/267632162886",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "1bbc4165-7f13-4819-bff4-bff94fb3dd6e",
+        "date": "2026-04-19",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "9.60",
+        "attributes": {
+          "gradeNumber": "0.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/4aa6bfe4-374a-11f1-9a64-02e4d624ee35",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "bc5ac91c-5d2a-4748-924f-cf339cf1ad57",
+        "date": "2026-04-15",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "120.01",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/117145419364",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "ac742df0-ca97-4984-89ce-9debff26cabd",
+        "date": "2026-04-15",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "54.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/374205021941",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "340fa5ec-7d7c-463b-b528-d9c499c0dec4",
+        "date": "2026-04-12",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "13.20",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/f39c5b20-2180-11f1-bd2c-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "684a6409-dde9-4e6c-8e30-d1505f04fa92",
+        "date": "2026-04-12",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "9.60",
+        "attributes": {
+          "gradeNumber": "6.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/f3a3fcf4-2180-11f1-814b-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8c864cb8-b2ec-4f96-aaa0-714e2ec19233",
+        "date": "2026-04-10",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "66.49",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/327084137768",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8c97cd20-904d-41e8-ab6c-9faf9be0730f",
+        "date": "2026-04-05",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "162.50",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/267618679297",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "9dd7d204-e14d-4297-aac1-444c8762a0c4",
+        "date": "2026-04-02",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "26.90",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/377065378750",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "9663bea4-4675-4cab-bef1-63561a5d9c50",
+        "date": "2026-04-01",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "100.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/cc43eda2-4f91-4e49-83d1-c2fe0cf6aa79",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e6b1b194-7834-4ee4-b4af-51a75fc578a2",
+        "date": "2026-04-01",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "49.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/389794313532",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5801b9b9-25f6-4668-9621-97344207490f",
+        "date": "2026-03-25",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "30.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/397533251684",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "be7a6b6f-e5bf-4742-bb8e-d0e555ddff39",
+        "date": "2026-03-24",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "44.99",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/306835254654",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "80b2b7b3-cd11-4ec3-8f42-1e57e06f948f",
+        "date": "2026-03-22",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "175.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/389720515669",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "18196127-4362-47bd-9001-bec4241911b6",
+        "date": "2026-03-22",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "43.20",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "BGS",
+          "url": "https://www.fanaticscollect.com/weekly/9bbda75c-1e5f-11f1-87e7-0ae9bec263df",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "343ff1f6-f71d-4421-9eb4-4e58fd6c7117",
+        "date": "2026-03-22",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "25.20",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/172c4c8a-1e6b-11f1-bc02-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "26fed7c0-a87a-4ab2-b5f1-9d9f193661e9",
+        "date": "2026-03-22",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "20.40",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/1724ff3e-1e6b-11f1-8f91-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "1527bb9f-901f-4010-9083-edb77c54f450",
+        "date": "2026-03-21",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "50.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/374205019617",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "6223d01e-8eba-4c74-b7c9-a52923ff3f04",
+        "date": "2026-03-17",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "19.99",
+        "attributes": {
+          "gradeNumber": "3.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/117091222859",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f0e7b99b-befd-4809-8992-9d482c3eadb7",
+        "date": "2026-03-16",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "60.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/035ca130-ac05-4837-bcaf-852fae883116",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "1ca7a1a7-9562-4494-a820-a3b517c4c0b7",
+        "date": "2026-03-16",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "31.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/177943331112",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "ff38aa58-ff95-4e00-b87f-73c12e05fa38",
+        "date": "2026-03-16",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "22.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/358335047225",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "78fdcab7-bfb1-4018-98d4-22125d4c5a95",
+        "date": "2026-03-13",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "40.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/127040107527",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "17181259-fb79-4ce2-9efb-5cdfa9a9a8b2",
+        "date": "2026-03-10",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "36.03",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/277375159825",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e793907c-2921-43fe-a854-059b5afa27f9",
+        "date": "2026-03-07",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "14.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/297928845174",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f5950acb-8cdb-46a3-82ff-d30bf3ac97f9",
+        "date": "2026-03-02",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "44.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/c2d7fddd-d424-4e5c-897e-d758f6ec1ee8",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "eb616236-079b-4c70-b0e4-49dbf49e4c77",
+        "date": "2026-03-01",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "24.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/b6ec86c4-0f87-11f1-a3f9-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d16a153f-a8b2-4032-b677-7a1fef3d3fe8",
+        "date": "2026-02-27",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "35.00",
+        "attributes": {
+          "gradeNumber": "0.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/4ef055e5-a30c-499e-bfb8-a357095b3d66",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0b0f1fe8-ed58-46e0-b6b7-caf3f9510ef6",
+        "date": "2026-02-26",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "18.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/297928847439",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "29f86d19-6ba2-41b3-bd09-121eefc9499d",
+        "date": "2026-02-20",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "44.99",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/166812382596",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "878dbdba-dae4-4bb3-bccf-2c5866755caf",
+        "date": "2026-02-15",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "174.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/bfe13a5a-efec-11f0-8bcc-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8d6dcd52-fb2f-404d-a832-644ca864d49e",
+        "date": "2026-02-13",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "50.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/257354998864",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "db4c8128-8be0-4a30-9574-cf440949f709",
+        "date": "2026-02-09",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "25.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/357665833446",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b6f24512-d1ba-48fe-a8ce-a71827f72f33",
+        "date": "2026-02-08",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "132.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/bfe0d5b0-efec-11f0-9d35-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f3afaeb9-2e43-4eed-a0e4-8035fafaf09f",
+        "date": "2026-02-08",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "20.50",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/287106328174",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "6a528592-2900-466f-a0ed-0d4b2807ed10",
+        "date": "2026-02-06",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "189.99",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/317790671484",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b21d5078-3876-477d-a932-cad1da9cd9f2",
+        "date": "2026-02-01",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "162.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/bfdfa7ee-efec-11f0-99c0-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "242fa8e9-1efa-4061-b383-7de62d1b701d",
+        "date": "2026-02-01",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "45.60",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/bfe06d00-efec-11f0-9191-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "656e4c98-08f8-43b8-a9b8-76722e8224dd",
+        "date": "2026-02-01",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "19.50",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/336409419404",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "362a3ccf-764e-4390-bac6-3b9e80160a1e",
+        "date": "2026-01-31",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "61.74",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/326283664043",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2c75ac9b-8699-4d57-aefd-9da58c8dd328",
+        "date": "2026-01-28",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "35.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/297978763423",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "02035bd5-cd7e-4f2b-83d2-d86f3dccd940",
+        "date": "2026-01-25",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "225.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/227188514112",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d23ec528-92fd-4899-b504-9de6baff49a8",
+        "date": "2026-01-25",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "156.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/bfde8012-efec-11f0-9265-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "6f8ccd0c-fb7d-4789-a9b1-895ea3786819",
+        "date": "2026-01-25",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "50.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/306592445485",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5e32cf8e-f9d0-473b-afe0-82f9a4d71b73",
+        "date": "2026-01-25",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "44.40",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/bfe008ec-efec-11f0-8019-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "771e44a1-9b9b-4ea5-a008-ba8f0f80c27f",
+        "date": "2026-01-22",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "14.00",
+        "attributes": {
+          "gradeNumber": "0.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/buy-now/9705402b-bc05-405c-a046-9aa62ca1e0f8",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b537e202-2272-4a77-b01d-d0a8ed49d13c",
+        "date": "2026-01-21",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "19.99",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/353368677494",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f8362e2c-9cf0-4f44-86e3-582a31b66908",
+        "date": "2026-01-19",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "21.49",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/366119741730",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2369a8e8-540e-4a4f-aaa9-b8ab7c09d70a",
+        "date": "2026-01-18",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "40.80",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/7ac4e734-e856-11f0-8bff-06c10da8712b",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f370d290-5eac-4d2f-afaf-af4a37d2c5f1",
+        "date": "2026-01-12",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "31.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/205974627349",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "fba339f7-858c-40c1-a9f0-ade587369dab",
+        "date": "2026-01-11",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "29.99",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/317732122205",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "56fb8735-5aba-4953-bbbd-86d254f0d7a3",
+        "date": "2026-01-08",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "35.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/127597854485",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8bdf7bf2-d058-4a73-ad0b-eddd9aee4d63",
+        "date": "2026-01-08",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "30.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/226986401713",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "77d955a7-710d-4c56-8662-817f75a63ff6",
+        "date": "2026-01-07",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "18.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/397424674018",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "cb661fe7-11ad-4a1f-a96a-eef8cf00ea11",
+        "date": "2026-01-06",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "16.99",
+        "attributes": {
+          "gradeNumber": "4.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/196865788022",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "82fa050c-f308-49b3-8435-cd5559673340",
+        "date": "2025-12-27",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "41.50",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/366064365940",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4b2b146a-4855-445d-a0bf-fa99b48b2453",
+        "date": "2025-12-20",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "30.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/127303018591",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3f1f420a-c1f9-4bfe-bdb5-b7300823d08e",
+        "date": "2025-12-15",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "30.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/306617614812",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "bd6d2d86-f789-478a-abae-480df6b7f172",
+        "date": "2025-11-30",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "37.81",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/326794971636",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "ce7bd865-10d1-4816-ae70-063e022892b8",
+        "date": "2025-11-23",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "15.50",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/297765014898",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0ad1540e-8fe5-4d37-8581-30175a1090bb",
+        "date": "2025-11-16",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "7.50",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/286923833483",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "fcc2d019-48ce-47f2-82b8-91ba003a3885",
+        "date": "2025-11-09",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "10.50",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/286909223854",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c5da28da-2579-4298-9889-0cc15497dd94",
+        "date": "2025-11-01",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "35.00",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/127452078578",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e08d1432-b67e-4953-a2a9-8b6bef2f059f",
+        "date": "2025-10-29",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "88.04",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/336252511112",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4f7f4929-dae1-4ae1-a75b-75a263feb5c4",
+        "date": "2025-10-14",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "34.00",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/365908330712",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "1654e8ea-241c-456d-a931-81f3506a3243",
+        "date": "2025-09-29",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "28.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/405975121513",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "7731470a-c688-4429-b06c-04c7ce410905",
+        "date": "2025-09-19",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "15.74",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/116775541977",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8d733559-e430-48a3-893a-1d0622d531ee",
+        "date": "2025-09-18",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "241.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://sales-history.pwccmarketplace.com/items/FIXED329729",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5606a127-96aa-4993-9375-35f6ae65f6c0",
+        "date": "2025-09-14",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "144.00",
+        "attributes": {
+          "gradeNumber": "10.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/5a5497a6-8ea6-11f0-8466-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5bb284ec-018c-4502-97d0-126c60aee1d3",
+        "date": "2025-09-14",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "26.40",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/7a217b72-89d2-11f0-83bc-064c55e04049",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b234c8dd-67c7-416a-b2aa-332503287fe6",
+        "date": "2025-09-14",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "25.20",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/74230838-8484-11f0-aeab-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b4115e4e-a280-43d3-993a-f910945aefc6",
+        "date": "2025-08-31",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "36.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/9dd9a4dc-79f0-11f0-9e66-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c2b38ce5-809d-48b8-8a2b-311533106f48",
+        "date": "2025-08-31",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "24.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/9def0cf0-79f0-11f0-bb91-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "75f76cba-7cb3-4a8a-844a-ada25a019e32",
+        "date": "2025-08-24",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "13.20",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/0d94ec40-73b2-11f0-80ca-02d2959f8f9d",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0a9816db-1f47-4bcb-b756-a05745611fa4",
+        "date": "2025-08-09",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "34.99",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/326615507814",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b5a804e5-06bb-455f-b582-39330952536c",
+        "date": "2025-07-27",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "25.20",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/3cc76892-61cb-11f0-94d4-02afd2a02dab",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "82d0e12a-6625-4893-899a-dc46494a5c02",
+        "date": "2025-07-24",
+        "auctionHouse": "PWCC Fixed Price",
+        "auctionType": "BEST_OFFER",
+        "price": "34.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "CGC",
+          "url": "https://sales-history.pwccmarketplace.com/items/FIXED285708",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "86aa6d5b-fb60-42a5-bd3e-7daef026eb51",
+        "date": "2025-07-12",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "17.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/176820090639",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "51d385ab-7a43-419f-a5cb-2ce8ca9a76df",
+        "date": "2025-07-07",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "52.24",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/326633502000",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "6508a117-f28d-4d46-a783-01b92f3a36a8",
+        "date": "2025-07-02",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "36.25",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/316490125971",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4df139a2-ab2e-4e57-b753-b3e9ebdddc5f",
+        "date": "2025-06-11",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "52.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/326283664048",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a98fd08e-7194-4186-b4d9-7739388b98ae",
+        "date": "2025-06-08",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "15.60",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/71db5c9e-329d-11f0-955f-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3fa4fb38-ac78-47c8-9207-eea24edb50f3",
+        "date": "2025-04-09",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "11.89",
+        "attributes": {
+          "gradeNumber": "6.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/126906311705",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "93f14901-b7f2-4488-ba1e-f26daa04aefd",
+        "date": "2025-04-08",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "26.33",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/335889377631",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "73ca943b-fe13-4098-90d5-5dd375cb18e9",
+        "date": "2025-03-17",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "21.74",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/135115039038",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "de566226-13bd-4ea1-b275-f8f9fc7e71e7",
+        "date": "2025-03-02",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "21.84",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/PONYTA-1ST-EDITION-POKEMON-GAME-1999-60-PSA-6-/135568514383",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3e414793-f7f4-4dd0-a9d9-47f7b92710d2",
+        "date": "2025-03-01",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "23.74",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/CGC-8-Ponyta-1999-Base-Set-1st-Edition-60-102-Pokemon-Card-psa-/326414035600",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "83e687b0-d4f6-41f9-a141-a4b6573b4bb6",
+        "date": "2025-01-17",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "10.75",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/Pokemon-Cards-Base-Set-1st-Edition-Common-Ponyta-60-102-CGC-6-/316114126840",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "dc7fd964-8ff4-4ca0-aabd-991fe41304a7",
+        "date": "2024-12-28",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "11.50",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Base-Set-1st-Edition-60-102-Ponyta-CGC-7-5-NM-/375873785052",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "36eaac39-e249-4bca-a0d9-68bd1ab0aea0",
+        "date": "2024-12-23",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "16.00",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Pokemon-PSA-6-EX-MT-1st-Edition-Shadowless-Base-Set-Ponyta-60-102-/235882741687",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a826222b-afa5-4b6e-abdd-b9f8c63a4f5f",
+        "date": "2024-12-06",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "8.50",
+        "attributes": {
+          "gradeNumber": "6.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/PSA-6-EX-MT-1999-Pokemon-1st-Edition-Pontya-60-/167135257970",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3841f9bd-175d-4e35-9e95-c70437592aee",
+        "date": "2024-11-26",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "19.00",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/CGC-7-5-Ponyta-1999-Base-Set-Shadowless-1st-Edition-60-102-Pokemon-Card-psa-/326283664060",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8c1a39b1-fdc3-4e5c-92bb-c0097e685b11",
+        "date": "2024-11-24",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "15.00",
+        "attributes": {
+          "gradeNumber": "7.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/Ponyta-1st-Edition-Base-Set-Shadowless-60-102-CGC-7-5-Pokemon-1999-/126771310716",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "1eb317f0-3048-467c-81e5-e6000cbc548c",
+        "date": "2024-11-03",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "336.00",
+        "attributes": {
+          "gradeNumber": "10.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5c6095c9-bc83-4fbf-b8ba-04ad7e73f3b8",
+        "date": "2024-11-03",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "70.77",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-POKEMON-BASE-SET-1ST-EDITION-60-PONYTA-PSA-8-5-/305863590420",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "6ef6d520-0a6b-4cc7-8d3e-3fcc9cf5395d",
+        "date": "2024-09-15",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "18.68",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/Pokemon-Cards-Base-Set-1st-Edition-Common-Ponyta-60-102-CGC-5-/315725342307",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d9eb09bc-9ad2-4b42-b00f-4db7e96ce80d",
+        "date": "2024-09-05",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "9.95",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/Ponyta-1999-Base-Set-1st-Edition-Shadowless-CGC-8-Near-Mint-Pokemon-TCG-/286033748446",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8d763f62-7bcd-44e6-b240-c160483166b7",
+        "date": "2024-09-03",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "27.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Base-Set-Ponyta-CGC-9-5-1st-Edition-60-102-/326248773782",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "a3b78acc-424e-4b4b-a3a2-bce811016a10",
+        "date": "2024-09-03",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "20.50",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Base-Set-Ponyta-CGC-9-5-1st-Edition-60-102-/226317854055",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5d92017a-5cfe-4963-989a-fdd3dec7e5ea",
+        "date": "2024-08-18",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "35.84",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/Pokemon-Cards-Base-Set-1st-Edition-Common-Ponyta-60-102-CGC-5-/315640559137",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": "RELISTED",
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "f727bb89-801b-4d19-9bc6-7d88e4eaedef",
+        "date": "2024-07-12",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "37.31",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/Pokemon-Base-Set-1st-Edition-Shadowless-Stamp-Ponyta-60-102-BGS-Beckett-9-Mint-/335240962497",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "781e93ab-54b6-4e3f-8173-d70c5311ad5a",
+        "date": "2024-04-17",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "5.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Pokemon-PSA-5-Excellent-1st-Edition-Shadowless-Base-Set-Ponyta-60-102-/176331239513",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "712ab131-8cb0-4171-a591-b9f219ffb101",
+        "date": "2024-03-18",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "15.00",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/386859006228",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "5e65a384-68f2-47b6-a05f-d34c1645cbc9",
+        "date": "2024-02-02",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "250.00",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/Pokemon-1999-Base-Set-Ponyta-60-102-Staryu-65-102-1st-Edition-Shadowless-BGS-9-5-/145590143173",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "2515a0b7-33dd-4d21-bbbe-259d2c352715",
+        "date": "2024-01-11",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "47.49",
+        "attributes": {
+          "gradeNumber": "9.5",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/325876895631",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c56319b7-15a0-4c11-b073-d537fd40b582",
+        "date": "2023-12-31",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "20.40",
+        "attributes": {
+          "gradeNumber": "7.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.fanaticscollect.com/weekly/8f7dd828-9391-11ee-9a67-0a58a9feac02",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "8a21886c-2e4b-4ab2-8aa4-a1ad135a3335",
+        "date": "2023-09-28",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "6.50",
+        "attributes": {
+          "gradeNumber": "8.0",
+          "gradingCompany": "CGC",
+          "url": "https://www.ebay.com/itm/295945255707",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "c78f28da-ea55-4601-a200-0d2f749512a4",
+        "date": "2023-09-24",
+        "auctionHouse": "PWCC Weekly Auctions",
+        "auctionType": "AUCTION",
+        "price": "12.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.fanaticscollect.com/weekly/5ac4436c-41c8-11ee-8e2e-0a202cc57435",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "ee6eda71-c72f-41e4-8c94-1f9a4ba7a1fa",
+        "date": "2023-01-06",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "34.79",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Game-Ponyta-1st-Edition-Shadowless-60-102-PSA-8-5-low-population-/403929116245",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "4ea6c5c7-223c-4935-855f-c1d6c862e360",
+        "date": "2022-12-23",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "25.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1st-Edition-PONYTA-PSA-8-5-1999-Pokemon-Shadowless-Base-Set-TCG-Card-/295415500262",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "190ef960-4741-474e-82e7-6345deb00cf0",
+        "date": "2022-10-20",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "27.59",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Ponyta-Base-Set-1st-Edition-60-PSA-8-5-NEAR-MINT-MINT-/115564902449",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "cc9d9968-0ece-4767-896c-da8474b6bab9",
+        "date": "2022-10-10",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "6.50",
+        "attributes": {
+          "gradeNumber": "4.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-1st-Edition-Shadowless-Ponyta-60-102-PSA-4-VG-EX-/255757805125",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "58aba570-80ee-445b-98ee-a5ce9d0fd73d",
+        "date": "2022-08-22",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "17.50",
+        "attributes": {
+          "gradeNumber": "9.0",
+          "gradingCompany": "BGS",
+          "url": "https://www.ebay.com/itm/PONYTA-1999-POKEMON-1ST-EDITION-THICK-STAMP-60-BGS-9-/275423838617",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0ff9cdfe-00e3-45df-9c0f-d2b48e723de4",
+        "date": "2022-07-18",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "19.50",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Pokemon-Ponyta-Base-Set-1st-Edition-Shadowless-Card-60-102-PSA-5-EX-/325274455641",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e4c7fedd-9c32-470e-b927-fb3b0a00c243",
+        "date": "2022-04-27",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "10.99",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Game-Base-Set-1st-Edition-60-Ponyta-PSA-5-EX-/354020011582",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "3af06156-2e25-46c4-a2b1-7957a5730cf9",
+        "date": "2022-04-15",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "34.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/PSA-8-5-NM-MINT-Ponyta-1st-Edition-Base-Set-Shadowless-Pokemon-WOTC-1999-/284758461268",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "d52df02e-17bf-45ee-95a0-b0520688f16a",
+        "date": "2022-04-13",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "20.50",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Game-Base-Set-1st-Edition-60-Ponyta-PSA-5-EX-/185372781512",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "acef7ce6-66da-411a-af6c-c64a2dc35fba",
+        "date": "2022-04-11",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "11.50",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-POKEMON-GAME-60-PONYTA-1ST-EDITION-PSA-5-EX-/403584000574",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "09b9af39-a894-4c86-907a-45169b99c7e9",
+        "date": "2022-04-03",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "30.00",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/PSA-5-Pokemon-1999-Shadowless-1st-Edition-Base-Set-Ponyta-60-/154929484306",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "e40d28b2-2892-4265-b6b5-908c6ba0a609",
+        "date": "2022-02-06",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "17.50",
+        "attributes": {
+          "gradeNumber": "5.0",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Ponyta-1ST-EDITION-BASE-SET-Pokemon-WOTC-1999-PSA-5-Vintage-Cards-/325024255087",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "9e154010-0900-4a34-bd35-720930ad8b23",
+        "date": "2021-10-19",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "59.99",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Pokemon-PSA-8-5-1st-Ed-Base-Set-COMMON-Ponyta-60-102-PSA-Graded-NM-MT-8-5-/324555126868",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "0c1205e6-573d-421f-9bc1-fd17ee89b312",
+        "date": "2021-10-16",
+        "auctionHouse": "eBay",
+        "auctionType": "BUY_IT_NOW",
+        "price": "59.99",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Pokemon-PSA-8-5-1st-Ed-Base-Set-COMMON-Ponyta-60-102-PSA-Graded-NM-MT-8-5-/324555126868",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "b496b74f-6031-4d8e-9940-630a0357e342",
+        "date": "2021-09-15",
+        "auctionHouse": "eBay",
+        "auctionType": "AUCTION",
+        "price": "51.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/Ponyta-1st-Edition-Shadowless-Base-Set-Pokemon-Card-60-PSA-8-5-NM-MT-/185034712842",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      },
+      {
+        "id": "7dfa92e9-98c2-4084-b447-72438f46b74f",
+        "date": "2021-06-17",
+        "auctionHouse": "eBay",
+        "auctionType": "BEST_OFFER",
+        "price": "68.00",
+        "attributes": {
+          "gradeNumber": "8.5",
+          "gradingCompany": "PSA",
+          "url": "https://www.ebay.com/itm/1999-Pokemon-Base-Set-1st-Edition-Shadowless-Ponyta-60-PSA-8-5-NM-MT-/304022778187",
+          "autograph": null,
+          "__typename": "MarketTransactionAttributes"
+        },
+        "subjectToChange": false,
+        "consolidatedSkippedReason": null,
+        "label": "",
+        "__typename": "MarketTransaction"
+      }
+    ],
+    "detail": {
+      "date": "2026-09-05",
+      "id": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+      "auctionHouse": "eBay",
+      "auctionName": "1999 Ponyta 60/102 Base Set 1st Edition PSA 4 VG-EX Pokemon TCG",
+      "auctionType": "BEST_OFFER",
+      "displayPrice": 27.46,
+      "label": "",
+      "fees": null,
+      "shipping": 17.59,
+      "usdAmount": 27.46,
+      "consolidatedSkippedReason": null,
+      "currency": null,
+      "asset": {
+        "id": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "name": "1999 Pokemon Base Set 1st Edition Ponyta #60",
+        "year": 1999,
+        "subject": "Ponyta",
+        "category": "POKEMON_CARDS",
+        "brand": "Pokemon Base Set",
+        "variety": "1st Edition",
+        "attributes": {
+          "cardNumber": "60",
+          "printRun": null,
+          "__typename": "AssetAttributes"
+        },
+        "__typename": "Asset"
+      },
+      "attributes": {
+        "grade": "4.0",
+        "gradingCompany": "PSA",
+        "cert": null,
+        "url": "https://www.ebay.com/itm/335037487554",
+        "autograph": null,
+        "imgThumbnailUrl": "https://onlyalt-images.s3.us-east-2.amazonaws.com/image/external/ebay/ccg/20260905T111351/335037487554.jpg",
+        "images": [
+          {
+            "position": "FRONT",
+            "url": "https://alt-images.b-cdn.net/external/ebay/ccg/20260905T111351/335037487554.jpg?height=auto&width=auto&quality=50",
+            "__typename": "Image"
+          },
+          {
+            "position": "BACK",
+            "url": "https://alt-images.b-cdn.net/external/ebay/ccg/20260905T111351/335037487554-1.jpg?height=auto&width=auto&quality=50",
+            "__typename": "Image"
+          }
+        ],
+        "__typename": "ExternalTransactionAttributes"
+      },
+      "subjectToChange": false,
+      "__typename": "ExternalTransaction"
+    }
+  },
+  "ebay": {
+    "endpoint": "https://www.ebay.com/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&endDate=1788635246667&startDate=1780859246667&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+    "resultCount": 21,
+    "rows": [
+      {
+        "itemId": "117245257846",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+        "url": "https://www.ebay.com/itm/117245257846?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$124.99"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Free shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$0.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "100% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "127936723252",
+        "title": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9",
+        "extendedTitle": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+        "url": "https://www.ebay.com/itm/127936723252?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$130.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$6.50 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$6.50"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "127943558744",
+        "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+        "extendedTitle": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/127943558744?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$160.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$20.27 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$20.27"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "278075088958",
+        "title": "PONYTA 1999 POKEMON BASE SET 1ST EDITION #60/102 PSA 9 Q3963",
+        "extendedTitle": "PONYTA 1999 POKEMON BASE SET 1ST EDITION #60/102 PSA 9 Q3963 060/102 40 60/102 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Wizards of the Coast Yes 4043367850",
+        "url": "https://www.ebay.com/itm/278075088958?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$108.50"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$6.00 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$6.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "287372201712",
+        "title": "Pokemon Ponyta Base Set Shadowless 1st Edition #60 PSA 9 Mint",
+        "extendedTitle": "Pokemon Ponyta Base Set Shadowless 1st Edition #60 PSA 9 Mint 1999 Base Set (Shadowless) Near Mint or Better Pokémon Pokémon TCG Professional Sports Authenticator (PSA) United States Yes",
+        "url": "https://www.ebay.com/itm/287372201712?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$98.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$9.99 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$9.99"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "287397292804",
+        "title": "Pokemon Ponyta Base Set 60/102 1st Edition PSA 9",
+        "extendedTitle": "Pokemon Ponyta Base Set 60/102 1st Edition PSA 9 060/102 1999 40 6+ Base Set (Shadowless) Basic Card Stock Common English Ken Sugimori Nintendo No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular Standard The Pokémon Company United States Yes 4043367850",
+        "url": "https://www.ebay.com/itm/287397292804?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$106.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$6.99 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$6.99"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "287520908087",
+        "title": "1999 Pokemon Base Set PSA 9 1st Edition Shadowless # 60 Ponyta",
+        "extendedTitle": "1999 Pokemon Base Set PSA 9 1st Edition Shadowless # 60 Ponyta Wizards of the Coast No Basic Pokémon 060/102 United States Yes Regular Standard Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) Card Stock 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/287520908087?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$99.99"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Free shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$0.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "100% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "307031659691",
+        "title": "2014 POKEMON JAPANESE XY WILD BLAZE 1ST EDITION #012 PONYTA PSA 9",
+        "extendedTitle": "2014 POKEMON JAPANESE XY WILD BLAZE 1ST EDITION #012 PONYTA PSA 9 Basic Pokémon Yes Tomokazu Komiya Regular Japan Pokémon TCG Common Xy2: Wild Blaze 012 Professional Sports Authenticator (PSA) 012/080 60 The Pokémon Company 13074356423",
+        "url": "https://www.ebay.com/itm/307031659691?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$18.50"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$32.00 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$32.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "336701223535",
+        "title": "Pokemon 1999 Base Set 1st Edition Ponyta 60 PSA 9 MINT",
+        "extendedTitle": "Pokemon 1999 Base Set 1st Edition Ponyta 60 PSA 9 MINT Basic Pokémon 060/102 Yes Regular Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) Card Stock 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/336701223535?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$120.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Free shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$0.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "100% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "336708469907",
+        "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+        "extendedTitle": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/336708469907?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$164.99"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$5.48 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$5.48"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "336774843306",
+        "title": "PONYTA Japanese Advent of Arceus 1st Edition Holo Rare #019 PSA 9 Pokemon",
+        "extendedTitle": "PONYTA Japanese Advent of Arceus 1st Edition Holo Rare #019 PSA 9 Pokemon Basic Pokémon Yes Pt4: Advent of Arceus Pokémon TCG Certified Guaranty Company (CGC) Common 2009 019/090 Professional Sports Authenticator (PSA) Kanako Eo 019 60 The Pokémon Company 20074149578",
+        "url": "https://www.ebay.com/itm/336774843306?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$345.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$19.40 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$19.40"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "366554819849",
+        "title": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9 Basic Professional Sports Authenticator (PSA) Pokémon Yes Regular Dp1: Space-Time Creation 60 Kagemaru Himeno Pokémon TCG Japanese The Pokémon Company Common 13073826034",
+        "url": "https://www.ebay.com/itm/366554819849?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$77.50"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$6.25 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$6.25"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "366624413453",
+        "title": "Ponyta 60/102 1st Edition Game Pokemon PSA 9",
+        "extendedTitle": "Ponyta 60/102 1st Edition Game Pokemon PSA 9 No Basic Pokémon 060/102 United States Yes Regular Standard Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 6+ Card Stock 40 The Pokémon Company 1999 4043367850",
+        "url": "https://www.ebay.com/itm/366624413453?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$102.50"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Free shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$0.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "100% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "377308224695",
+        "title": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9 English Professional Sports Authenticator (PSA) Pokémon United States Yes Pokémon TCG",
+        "url": "https://www.ebay.com/itm/377308224695?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$130.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$4.99 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$4.99"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "377322427446",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 Basic Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/377322427446?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$150.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$4.99 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$4.99"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "377355570162",
+        "title": "PSA 9 Ponyta Holo Advent of Arceus 1st Edition Shiny Japanese Pokemon 019/090",
+        "extendedTitle": "PSA 9 Ponyta Holo Advent of Arceus 1st Edition Shiny Japanese Pokemon 019/090 No Basic Pokémon United States Yes 090 Pt4: Advent of Arceus Standard Pokémon TCG Chase Common 2009 Alternative Art Professional Sports Authenticator (PSA) Kanako Eo Fire Card Stock 019 60 The Pokémon Company 20074149578",
+        "url": "https://www.ebay.com/itm/377355570162?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$450.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$29.53 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$29.53"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "397578980482",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 Basic Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/397578980482?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$129.89"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$7.23 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$7.23"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "398264625198",
+        "title": "POKEMON PONYTA 2009 JPN ADVENT OF ARCEUS #019 1ST ED. HOLO PSA 9",
+        "extendedTitle": "POKEMON PONYTA 2009 JPN ADVENT OF ARCEUS #019 1ST ED. HOLO PSA 9 Basic Pokémon Yes Japan Pt4: Advent of Arceus Pokémon TCG 1st Edition Japanese Common 019/090 Professional Sports Authenticator (PSA) Kanako Eo 019 60 The Pokémon Company 20074149578",
+        "url": "https://www.ebay.com/itm/398264625198?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$400.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$9.45 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$9.45"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "407062331296",
+        "title": "Pokemon 1999 Ponyta 60/102 Base Set 1st Edition PSA 9",
+        "extendedTitle": "Pokemon 1999 Ponyta 60/102 Base Set 1st Edition PSA 9 Basic Nintendo Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 6+ 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/407062331296?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$89.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$1.55 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$1.55"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "407071699728",
+        "title": "Shiny Ponyta Pokemon 2009 Holo Pt4 Advent of Arceus 1st Japanese 019/090 PSA 9",
+        "extendedTitle": "Shiny Ponyta Pokemon 2009 Holo Pt4 Advent of Arceus 1st Japanese 019/090 PSA 9 Basic Professional Sports Authenticator (PSA) Nintendo Pokémon Kanako Eo Yes Pt4: Advent of Arceus 60 Pokémon TCG 1st Edition The Pokémon Company Common 20074149578",
+        "url": "https://www.ebay.com/itm/407071699728?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$389.99"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$5.00 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ],
+            "accessibilityText": "Fixed price"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$5.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "itemId": "800467858236",
+        "title": "POKEMON BASE SET SHADOWLESS PONYTA 1999 #60 1ST EDITION PSA 9",
+        "extendedTitle": "POKEMON BASE SET SHADOWLESS PONYTA 1999 #60 1ST EDITION PSA 9 Basic Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 60 40 The Pokémon Company 4043367850",
+        "url": "https://www.ebay.com/itm/800467858236?nordt=true&orig_cvip=true&rt=nc",
+        "averageSale": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$143.50"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$7.95 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Auction"
+              }
+            ],
+            "accessibilityText": "Auction"
+          }
+        },
+        "averageShipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$7.95"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "comparison": [
+    {
+      "ebayItemId": "366624413453",
+      "altPrice": 102.5,
+      "ebayPrice": 102.5,
+      "equal": true,
+      "format": "AUCTION"
+    },
+    {
+      "ebayItemId": "287520908087",
+      "altPrice": 99.99,
+      "ebayPrice": 99.99,
+      "equal": true,
+      "format": "AUCTION"
+    },
+    {
+      "ebayItemId": "336708469907",
+      "altPrice": 164.99,
+      "ebayPrice": 164.99,
+      "equal": true,
+      "format": "BUY_IT_NOW"
+    },
+    {
+      "ebayItemId": "377308224695",
+      "altPrice": 130,
+      "ebayPrice": 130,
+      "equal": true,
+      "format": "BUY_IT_NOW"
+    },
+    {
+      "ebayItemId": "377322427446",
+      "altPrice": 150,
+      "ebayPrice": 150,
+      "equal": true,
+      "format": "BUY_IT_NOW"
+    },
+    {
+      "ebayItemId": "800467858236",
+      "altPrice": 143.5,
+      "ebayPrice": 143.5,
+      "equal": true,
+      "format": "AUCTION"
+    },
+    {
+      "ebayItemId": "336701223535",
+      "altPrice": 120,
+      "ebayPrice": 120,
+      "equal": true,
+      "format": "BUY_IT_NOW"
+    },
+    {
+      "ebayItemId": "366554819849",
+      "altPrice": 77.5,
+      "ebayPrice": 77.5,
+      "equal": true,
+      "format": "AUCTION"
+    },
+    {
+      "ebayItemId": "397578980482",
+      "altPrice": 129.89,
+      "ebayPrice": 129.89,
+      "equal": true,
+      "format": "BEST_OFFER"
+    },
+    {
+      "ebayItemId": "127943558744",
+      "altPrice": 160,
+      "ebayPrice": 160,
+      "equal": true,
+      "format": "BEST_OFFER"
+    },
+    {
+      "ebayItemId": "407062331296",
+      "altPrice": 89,
+      "ebayPrice": 89,
+      "equal": true,
+      "format": "AUCTION"
+    }
+  ]
+}
