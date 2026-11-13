@@ -28,6 +28,30 @@
     gap: var(--space-2);
   }
 }
+/* A slow part's panels and its stream's element sit in the screen's grid as if they were not
+   wrapped. */
+.part,
+.strategy-screen corten-live {
+  display: contents;
+}
+/* A waiting part's link to the page with every part read in shows in place of the line saying it
+   is on its way, where no stream will bring it: without scripts, or once the stream gave up. */
+@media (scripting: enabled) {
+  .show-now {
+    display: none;
+  }
+}
+@media (scripting: none) {
+  .reading {
+    display: none;
+  }
+}
+corten-live[status="closed"] .reading {
+  display: none;
+}
+corten-live[status="closed"] .show-now {
+  display: inline;
+}
 .actions {
   display: flex;
   flex-wrap: wrap;

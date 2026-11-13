@@ -56,6 +56,10 @@ struct SkuSearchId;
 #[derive(Id)]
 struct ShownStateId;
 
+/// A SKU's card, `sku-card-{sku}`: turning the SKU on or off replaces it.
+#[derive(Id)]
+struct SkuCardId(i32);
+
 /// The schedule form's id: an answer that refuses it replaces it.
 #[derive(Id)]
 pub struct ScheduleFormId;
@@ -426,8 +430,11 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     }
 }
 
+/// A SKU's card: what it is, when it was and will be priced, and its switch, which turns it on or
+/// off as it changes; Resume turns on a SKU waiting on a review. Each is a `data-patch` form, so
+/// with JavaScript the answer is this card again.
 #[component(css = ContinuousScreen)]
-fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
+pub fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Patch {
     let f = SkuInput::FIELDS;
     let price = item
         .current_price
@@ -436,7 +443,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
     let action = || url::SetSku { view: view.clone() };
     let now = SystemTime::now();
     html! {
-        <article class={(CardPanel { size: CardSize::Sm }, SkuCard)}>
+        <article id={SkuCardId(item.sku)} class={(CardPanel { size: CardSize::Sm }, SkuCard)}>
             <div class={Spread}>
                 <div>
                     <strong>{&item.product_name}</strong>
@@ -466,7 +473,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                         }
                     </p>
                 </div>
-                <form method="post" action={action()}>
+                <form method="post" action={action()} data-patch>
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <SubmitsOnChange>
                         <Switch label={item.state()}>
@@ -489,7 +496,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                 </form>
             </div>
             if let Some(reason) = &item.pause_reason {
-                <form method="post" action={action()} class={Review}>
+                <form method="post" action={action()} class={Review} data-patch>
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <input type="hidden" name={f.enabled} value="true">
                     <Notice variant={AlertVariant::Warning}>{reason}</Notice>
@@ -545,5 +552,68 @@ fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
                 </div>
             }
         </section>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use corten::{script::ElementId, view::Render};
+
+    use super::{SkuCardId, SkuRow};
+    use crate::{
+        features::continuous_pricing::{store::Item, url::View},
+        text::Msg,
+    };
+
+    /// A SKU's switch and its Resume are `data-patch` forms posting with the screen's view, inside
+    /// the card with its id, which their answer replaces: turning one SKU on or off draws that card
+    /// alone.
+    #[test]
+    fn a_skus_forms_answer_with_its_card() {
+        let item = Item {
+            sku: 42,
+            product_line: "Pokemon".into(),
+            set_name: "Base Set".into(),
+            product_name: "Pikachu".into(),
+            condition: "Near Mint".into(),
+            quantity: 2,
+            current_price: Some(1.5),
+            pricing_eligible: true,
+            enabled: true,
+            pause_reason: Some("The price moved too far.".into()),
+            last_priced_at: None,
+            last_published_at: None,
+            next_price_at: Utc::now(),
+        };
+        let view = View {
+            q: Some("pika".into()),
+            ..View::default()
+        };
+        let html = SkuRow {
+            item: &item,
+            view: &view,
+            t: Msg::default(),
+        }
+        .to_html();
+        let id: String = ElementId::of(&SkuCardId(42)).into();
+        let card = html.split('>').next().unwrap();
+        assert!(
+            card.starts_with("<article ") && card.contains(&format!("id=\"{id}\"")),
+            "{card}"
+        );
+        let forms: Vec<&str> = html
+            .split("<form ")
+            .skip(1)
+            .map(|form| form.split('>').next().unwrap())
+            .collect();
+        assert_eq!(forms.len(), 2, "{html}");
+        for form in forms {
+            assert!(
+                form.contains("action=\"/continuous-pricing/sku?q=pika\"")
+                    && form.contains("data-patch"),
+                "{form}"
+            );
+        }
     }
 }

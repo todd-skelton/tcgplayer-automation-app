@@ -7,7 +7,6 @@
 //! | `POST /pull-sheet` | the sheet saved and the browser sent to it, or the form with why the file is not a pull sheet |
 //! | `GET /pull-sheet/{id}` | the sheet: `q` filters it and `sort` orders it without JavaScript |
 mod items;
-pub mod json_route;
 mod page;
 mod sheet;
 mod store;

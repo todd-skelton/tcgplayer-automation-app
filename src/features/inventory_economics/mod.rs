@@ -10,17 +10,12 @@
 //! | `GET /inventory-economics` | the seller's current purchase costs and each order's economics |
 pub mod details;
 pub mod estimate;
-pub mod expense;
-pub mod funding;
-pub mod json_route;
 pub mod ledger;
 mod page;
 pub mod purchase_cost;
-pub mod purchase_cost_import;
 pub mod series;
 mod views;
 mod workspace;
-mod workspace_json;
 
 pub use views::COMPONENTS;
 

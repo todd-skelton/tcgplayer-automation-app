@@ -6,7 +6,7 @@ use corten::{
 use super::format::{count, days, fixed, instant, words};
 use crate::{
     features::inventory_strategy::{
-        screen::Screen,
+        screen::SellingHistory,
         selling_history::{
             OrderCoverage, PercentileStatus, Ready, Report, Scope, SellThroughStatus, Summary,
             UnavailableReason, Window,
@@ -65,10 +65,10 @@ fn When<'a>(at: Option<&'a str>, t: Msg) -> impl Render {
 
 /// Observed listing exposure and sales outcomes for the current seller.
 #[component(css = super::strategy_screen::StrategyScreen)]
-pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
+pub fn SellingHistoryPanel<'a>(history: &'a SellingHistory, t: Msg) -> impl Render {
     html! {
         <section class={CardPanel { size: CardSize::Sm }} aria-labelledby="selling-history">
-            match &screen.selling_history {
+            match history {
                 Err(why) => {
                     <h2 id="selling-history">"Selling history"</h2>
                     <Notice variant={AlertVariant::Warning}>{*why}</Notice>
@@ -120,13 +120,14 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     }
 }
 
-/// The window and product line the history covers, read again as either changes.
+/// The window and product line the history covers, read again as either changes: with
+/// JavaScript the answer is this panel alone, without it the page at the scope's address.
 #[component(css = super::strategy_screen::StrategyScreen)]
 fn ScopeControls<'a>(scope: &'a Scope, lines: &'a [String]) -> impl Render {
     let f = View::FIELDS;
     let line = scope.product_line.as_deref().unwrap_or("");
     html! {
-        <form method="get" action={url::InventoryStrategy { view: View::default() }}>
+        <form method="get" action={url::InventoryStrategy { view: View::default() }} data-patch>
             <SubmitsOnChange>
                 <div class={Line}>
                     <label class={Choice}>

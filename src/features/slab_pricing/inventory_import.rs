@@ -13,8 +13,8 @@ use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};
 
 use super::{
-    identity::{self, Record, Unresolved, certificate, normalized_certificate, text_field},
-    inventory::{Expected, Refused, identity_conflicts, seller_account},
+    identity::{self, Record, Unresolved, certificate, text_field},
+    inventory::{Refused, seller_account},
 };
 use crate::{
     csv_text::{self, Reading},
@@ -230,159 +230,6 @@ fn listings(csv: &str) -> Result<Vec<Value>, String> {
     once_each(table.rows.iter().map(snapshot))
 }
 
-/// `parseListingSnapshot` of a listing entered by hand: the listing as saved, with what it needs
-/// reviewed, or why it is refused, in the order Node checks.
-fn manual_listing(input: &Value) -> Result<Value, String> {
-    // Reading a field of `null` is a TypeError, refused as a field.
-    if input.is_null() {
-        return Err(FIELDS.to_owned());
-    }
-    let item_id = field(&input["itemId"], 20)?;
-    let title = field(&input["title"], 500)?;
-    let currency = field(&input["price"]["currency"], 3)?.map(|c| c.to_uppercase());
-    let amount = input["price"]["amount"].as_f64();
-    let quantity = input["quantity"].as_f64();
-    let state = input["state"].as_str().unwrap_or_default();
-    let format = input["format"].as_str().unwrap_or_default();
-    let valid = item_id
-        .as_deref()
-        .is_some_and(|i| (9..=20).contains(&i.len()) && i.bytes().all(|b| b.is_ascii_digit()))
-        && currency
-            .as_deref()
-            .is_some_and(|c| c.len() == 3 && c.bytes().all(|b| b.is_ascii_uppercase()))
-        && amount.is_some_and(|a| (0.0..=1e9).contains(&a))
-        && quantity.is_some_and(|q| q.fract() == 0.0 && (0.0..=1e7).contains(&q))
-        && ["active", "ended", "sold"].contains(&state)
-        && ["fixed-price", "auction", "unknown"].contains(&format);
-    let (Some(item_id), Some(title), Some(currency), Some(amount), Some(quantity), true) =
-        (item_id, title, currency, amount, quantity, valid)
-    else {
-        return Err(LISTING.to_owned());
-    };
-    // `input.shipping?.amount ?? null`: a shipping that is not an object has no amount.
-    let shipping = &input["shipping"];
-    let shipping_amount = &shipping["amount"];
-    let shipping_currency = field(&shipping["currency"], 3)?.map(|c| c.to_uppercase());
-    let known = match shipping_amount {
-        Value::Null => true,
-        amount => amount.as_f64().is_some_and(|a| (0.0..=1e9).contains(&a)),
-    };
-    if !known
-        || shipping_currency
-            .as_deref()
-            .is_some_and(|c| c.len() != 3 || !c.bytes().all(|b| b.is_ascii_uppercase()))
-    {
-        return Err("Shipping must be a known amount or blank.".to_owned());
-    }
-    let Some(given) = input["specifics"].as_object().filter(|s| s.len() <= 100) else {
-        return Err("Provide at most 100 item specifics.".to_owned());
-    };
-    let mut specifics = Map::new();
-    for (key, values) in given {
-        let name = field(&json!(key), 100)?;
-        let values = values.as_array().filter(|v| v.len() <= 20);
-        let (Some(name), Some(values)) = (name, values) else {
-            return Err("Invalid item specifics.".to_owned());
-        };
-        let values = values
-            .iter()
-            .map(|v| field(v, 500).map(Option::unwrap_or_default))
-            .collect::<Result<Vec<_>, _>>()?;
-        specifics.insert(name, json!(values));
-    }
-    // `input.certificate ? normalizeCertificate(input.certificate) : null`.
-    let certificate = match &input["certificate"] {
-        Value::Null | Value::Bool(false) => Value::Null,
-        Value::String(s) if s.is_empty() => Value::Null,
-        Value::Number(n) if n.as_f64() == Some(0.0) => Value::Null,
-        given => {
-            let (grader, number) =
-                normalized_certificate(&given["grader"], &given["certificateNumber"])
-                    .map_err(|_| FIELDS.to_owned())?;
-            json!({ "grader": grader, "certificateNumber": number })
-        }
-    };
-    let mut reasons = Vec::new();
-    if certificate.is_null() {
-        reasons.push("certificate-required".to_owned());
-    }
-    if quantity > 1.0 {
-        reasons.push("multiple-items-share-certificate".to_owned());
-    }
-    if names_a_lot(&title) {
-        reasons.push("unsupported-lot-review-listing".to_owned());
-    }
-    if format != "fixed-price" {
-        reasons.push("fixed-price-listing-required".to_owned());
-    }
-    let Some(given) = input["reviewReasons"].as_array().filter(|r| r.len() <= 30) else {
-        return Err("Invalid listing review reasons.".to_owned());
-    };
-    for reason in given {
-        if let Some(reason) = field(reason, 100)? {
-            reasons.push(reason);
-        }
-    }
-    // A set, sorted as JavaScript sorts text: by UTF-16 unit.
-    reasons.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
-    reasons.dedup();
-    // `normalizeExpectedIdentity(input.expected)`: none is `{}`, `null` a TypeError.
-    let expected = match input.get("expected") {
-        None => Expected::default(),
-        Some(given) if given.is_null() => return Err(FIELDS.to_owned()),
-        Some(given) => identity::expected(given).map_err(|_| FIELDS.to_owned())?,
-    };
-    Ok(json!({
-        "itemId": item_id,
-        "variationKey": field(&input["variationKey"], 160)?.unwrap_or_default(),
-        "sku": field(&input["sku"], 200)?,
-        "title": title,
-        "price": { "amount": js_number(amount), "currency": currency },
-        "shipping": {
-            "amount": shipping_amount.as_f64().map_or(Value::Null, js_number),
-            "currency": shipping_currency,
-            "policyId": field(&shipping["policyId"], 80)?,
-        },
-        "quantity": js_number(quantity),
-        "state": state,
-        "format": format,
-        "certificate": certificate,
-        "expected": expected_json(&expected),
-        "specifics": specifics,
-        "reviewReasons": reasons,
-    }))
-}
-
-/// What a listing is expected to be, as Node saves it.
-fn expected_json(expected: &Expected) -> Value {
-    json!({
-        "name": expected.name,
-        "game": expected.game,
-        "language": expected.language,
-        "set": expected.set,
-        "cardNumber": expected.card_number,
-        "year": expected.year,
-        "edition": expected.edition,
-        "finish": expected.finish,
-        "stamp": expected.stamp,
-        "gradeNumber": expected.grade_number.map_or(Value::Null, js_number),
-        "gradeLabel": expected.grade_label,
-        "qualifier": expected.qualifier,
-        "autograph": expected.autograph,
-    })
-}
-
-/// `parseInventoryImport` of listings entered by hand: each listing, once per item and variation.
-fn manual_listings(listings: &Value) -> Result<Vec<Value>, String> {
-    let Some(listings) = listings.as_array().filter(|l| l.len() <= MOST_LISTINGS) else {
-        return Err(
-            "Provide a bounded, dated inventory import. CSV and manual imports are always partial."
-                .to_owned(),
-        );
-    };
-    once_each(listings.iter().map(manual_listing))
-}
-
 /// The listings read, refused when one repeats another's item and variation (`listingKey`).
 fn once_each(listings: impl Iterator<Item = Result<Value, String>>) -> Result<Vec<Value>, String> {
     let mut seen = std::collections::HashSet::new();
@@ -452,19 +299,6 @@ pub async fn import_csv(
     let seller = current(conn, seller, revision).await?;
     let listings = listings(csv)?;
     reconcile(conn, &seller, revision, &listings, "csv", now).await
-}
-
-/// The `import-manual` route: listings entered by hand, saved as [`import_csv`] saves a file's.
-pub async fn import_manual(
-    conn: &mut PgConnection,
-    seller: &str,
-    revision: i64,
-    listings: &Value,
-    now: DateTime<Utc>,
-) -> Result<Imported, Refused> {
-    let seller = current(conn, seller, revision).await?;
-    let listings = manual_listings(listings)?;
-    reconcile(conn, &seller, revision, &listings, "manual", now).await
 }
 
 /// `reconcileInventory` of a partial import from `source`: each listing saved as of `now` over
@@ -601,33 +435,18 @@ pub async fn assign(
 /// How a listing's certificate was resolved.
 #[derive(Debug)]
 pub enum Resolved {
-    /// The listing was tied to an identity by hand, which stays: the one it is tied to.
-    ByHand { identity_id: Option<String> },
-    /// The listing is tied to its certificate's identity, and expects this of it.
-    Looked {
-        record: Box<Record>,
-        expected: Box<Expected>,
-    },
+    /// The listing was tied to an identity by hand, which stays.
+    ByHand,
+    /// The listing is tied to its certificate's identity.
+    Looked { record: Box<Record> },
 }
 
 impl Resolved {
     /// The identity looked up, if one was.
     pub fn record(self) -> Option<Record> {
         match self {
-            Resolved::ByHand { .. } => None,
-            Resolved::Looked { record, .. } => Some(*record),
-        }
-    }
-
-    /// Why the identity needs review, and where it disagrees with what the listing expects.
-    pub fn review_reasons(&self) -> Vec<String> {
-        match self {
-            Resolved::ByHand { .. } => Vec::new(),
-            Resolved::Looked { record, expected } => {
-                let mut reasons = record.review_reasons.clone();
-                reasons.extend(identity_conflicts(record.shown(), expected));
-                reasons
-            }
+            Resolved::ByHand => None,
+            Resolved::Looked { record } => Some(*record),
         }
     }
 }
@@ -648,22 +467,22 @@ pub async fn resolve<G: Gate>(
     if !id_like(listing) || !(1..=9_007_199_254_740_991).contains(&revision) {
         return Err(Refused::Invalid(LISTING_AND_REVISION.to_owned()));
     }
-    type Row = (i64, Option<String>, Option<String>, Value);
+    type Row = (i64, Option<String>, Value);
     let row: Option<Row> = sqlx::query_as(
-        "SELECT revision::int8, identity_source, identity_id::text, snapshot FROM slab_inventory WHERE seller = $1 AND id = $2::uuid",
+        "SELECT revision::int8, identity_source, snapshot FROM slab_inventory WHERE seller = $1 AND id = $2::uuid",
     )
     .bind(&seller)
     .bind(listing)
     .fetch_optional(&mut *conn)
     .await
     .map_err(unavailable)?;
-    let Some((_, source, identity_id, snapshot)) = row.filter(|(at, ..)| *at == revision) else {
+    let Some((_, source, snapshot)) = row.filter(|(at, ..)| *at == revision) else {
         return Err(Refused::Conflict(
             "Reload the listing before resolving its certificate.",
         ));
     };
     if source.as_deref() == Some("manual") {
-        return Ok(Resolved::ByHand { identity_id });
+        return Ok(Resolved::ByHand);
     }
     let certificate = &snapshot["certificate"];
     if certificate.is_null() {
@@ -678,7 +497,8 @@ pub async fn resolve<G: Gate>(
     ) else {
         return Err(fields());
     };
-    let expected = identity::expected(&snapshot["expected"]).map_err(|_| fields())?;
+    // What the listing expects must read, though the page shows only the identity looked up.
+    identity::expected(&snapshot["expected"]).map_err(|_| fields())?;
     let record = identity::lookup(conn, alt, (grader, number), false, cancel)
         .await
         .map_err(|unresolved| match unresolved {
@@ -706,7 +526,6 @@ pub async fn resolve<G: Gate>(
     }
     Ok(Resolved::Looked {
         record: Box::new(record),
-        expected: Box::new(expected),
     })
 }
 

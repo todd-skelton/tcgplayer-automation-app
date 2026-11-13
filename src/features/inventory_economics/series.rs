@@ -1,5 +1,6 @@
-//! What the three economics ledgers (purchase costs, funding, order expenses) share, ported from
-//! the Node repository's `findRepeatedRequest`, `lockSeries` and `nextCorrection`.
+//! An economics ledger's series, ported from the Node repository's `findRepeatedRequest`,
+//! `lockSeries` and `nextCorrection`. The app records only purchase costs; the funding and order
+//! expense ledgers it reads were written by the retired `/api` route.
 //!
 //! Each piece of evidence is a series (a seller's reference in one currency) of immutable entries:
 //! the first records it, each later one corrects the series' current entry and says why. A request
@@ -55,43 +56,28 @@ pub struct Saved {
     pub repeated: bool,
 }
 
-impl Saved {
-    /// As Node's route answers it: `{ entryId, repeated }`.
-    pub fn node_json(&self) -> serde_json::Value {
-        serde_json::json!({ "entryId": self.entry_id, "repeated": self.repeated })
-    }
-}
-
 /// One of the ledgers: its tables and what names a series in it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ledger {
     PurchaseCosts,
-    Funding,
-    OrderExpenses,
 }
 
 impl Ledger {
     fn entries(self) -> &'static str {
         match self {
             Ledger::PurchaseCosts => "inventory_purchase_cost_entries",
-            Ledger::Funding => "inventory_funding_entries",
-            Ledger::OrderExpenses => "inventory_order_expense_entries",
         }
     }
 
     fn series(self) -> &'static str {
         match self {
             Ledger::PurchaseCosts => "inventory_purchase_cost_series",
-            Ledger::Funding => "inventory_funding_series",
-            Ledger::OrderExpenses => "inventory_order_expense_series",
         }
     }
 
     fn reference(self) -> &'static str {
         match self {
             Ledger::PurchaseCosts => "purchase_reference",
-            Ledger::Funding => "adjustment_reference",
-            Ledger::OrderExpenses => "expense_reference",
         }
     }
 }

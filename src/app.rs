@@ -1,4 +1,4 @@
-//! The app: its routes, its screens and JSON routes, and its workers.
+//! The app: its routes, its screens and its workers.
 use std::time::Duration;
 
 use corten::{prelude::*, security::Policy};
@@ -43,32 +43,12 @@ pub mod url {
     pub struct Home;
 }
 
-/// The JSON routes' prefix: each feature's routes are added under it (`crate::api::ported`). Some
-/// (imports, slab evidence) answer after the page deadline, and the batch pricing stream stays
-/// open for as long as the page does.
-#[corten::routes(api = ApiRoot, state = Shared)]
-pub mod api {
-    #[route("/api")]
-    pub struct ApiRoot;
-}
-
 use dashboard::show as show_home;
-
-/// The API's own failures (an unknown method, the deadline, the Node app out of reach) in the Node
-/// app's shape.
-fn node_shaped<P: corten::Route>(api: corten::Api<P>) -> corten::Api<P> {
-    api.errors(|_, message| serde_json::json!({ "error": message }))
-}
 
 pub fn app(shared: Shared) -> App {
     let ready = shared.db.clone();
     let db = shared.db.clone();
     let app = App::new(url::router(shared.clone()))
-        .api(|routes| {
-            let routes =
-                api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60)));
-            node_shaped(crate::api::ported(routes, &shared))
-        })
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
         // Adding units to a count reads the card's market price from TCGplayer, giving up after 3 s.
         .area(|area| {
@@ -451,6 +431,53 @@ mod tests {
         assert!(failed.is_empty(), "{failed:#?}");
     }
 
+    /// A set chosen in the Inventory Manager with JavaScript is answered with the parts that change
+    /// with it, which the browser keeps a few minutes, so a set seen again comes with no request;
+    /// the page at the same address, as a browser without JavaScript asks for it, is the whole
+    /// screen, read again each time. Reads only, as above.
+    #[tokio::test]
+    #[ignore = "reads the dev database"]
+    async fn a_sets_answer_is_its_parts_kept_by_the_browser() {
+        crate::config::load_env();
+        let shared = Shared {
+            db: Database::connect_lazy(&crate::config::database_url()),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let client = app(shared).test();
+        let at = inventory_intake::url::InventoryManager {
+            selection: Default::default(),
+        };
+        let parts = client.get(&at).mode(corten::Mode::Action).await;
+        let page = client.get(&at).await;
+        assert_eq!(
+            parts.status(),
+            corten::http::StatusCode::OK,
+            "{}",
+            parts.text()
+        );
+        assert_eq!(page.status(), corten::http::StatusCode::OK);
+        assert_eq!(parts.headers()["cache-control"], "private, max-age=300");
+        assert!(
+            !page.headers()["cache-control"]
+                .to_str()
+                .unwrap()
+                .contains("max-age=300"),
+            "{:?}",
+            page.headers()["cache-control"]
+        );
+        let (parts, page) = (parts.text(), page.text());
+        assert!(parts.contains("intake_screen.listed("), "{parts}");
+        assert!(
+            !parts.contains("<main") && page.contains("<main"),
+            "{parts}"
+        );
+        // Neither the rows, the counts nor the batches: the screen has them already.
+        for whole in ["<tbody", "intake_screen.recounted(", "Background"] {
+            assert!(!parts.contains(whole) && page.contains(whole), "{whole}");
+        }
+        println!("parts {} bytes, page {} bytes", parts.len(), page.len());
+    }
+
     /// A view only the runtime asks for (it patches it into the page), marked so the test asks
     /// as the runtime does; without the header it redirects to its screen.
     fn patch(path: String) -> String {
@@ -572,6 +599,12 @@ mod tests {
             }
             .href(),
         ));
+        chosen.push(patch(
+            inventory_intake::url::InventoryManager {
+                selection: Default::default(),
+            }
+            .href(),
+        ));
         chosen.push(
             configuration::url::CalibrationReport {
                 window: Default::default(),
@@ -594,6 +627,7 @@ mod tests {
             .add::<pull_sheet::SortBy>()
             .add::<inventory_intake::IntakeListing>()
             .add::<inventory_intake::IntakeCounts>()
+            .add::<shipping_export::LabelFormFill>()
             .components(pull_sheet::COMPONENTS)
             .components(inventory_intake::COMPONENTS)
             .components(batch_pricer::COMPONENTS)

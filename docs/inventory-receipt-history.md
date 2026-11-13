@@ -41,24 +41,12 @@ return authenticated account identity, so this proves target consistency rather
 than the identity of the remote session.
 
 If a worker lease expires after remote state may have changed, the publication
-and remaining items become ambiguous and are never sent remotely again. After
-an operator verifies Seller Portal evidence, local history can be repaired by
-sending `PATCH` to `/api/inventory-batches/{batchNumber}/publications`:
-
-```json
-{
-  "operation": "confirm-ambiguous-item",
-  "publicationId": 123,
-  "itemId": 456,
-  "confirmedQuantity": 2,
-  "sellerKey": "target-seller",
-  "confirmedAt": "2026-08-10T12:00:00.000Z",
-  "evidence": { "source": "operator-confirmation", "ticket": "T-123" }
-}
-```
-
-The batch, seller, quantity, receipt chronology, and evidence must match. An
-exact retry is idempotent; conflicting time or evidence is rejected.
+and remaining items become ambiguous and are never sent remotely again. The
+repair that confirmed such an item from Seller Portal evidence was a JSON
+route (`PATCH /api/inventory-batches/{batchNumber}/publications`,
+`confirm-ambiguous-item`); it was retired with the rest of `/api`
+([Retiring the Node JSON routes](node-route-retirement.md)) and has no screen
+yet.
 
 Run the publication receipt integration test only against a disposable database
 whose name starts with `tcgplayer_fifo_test_`:

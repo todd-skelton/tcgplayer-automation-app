@@ -17,7 +17,6 @@ use serde_json::{Map, Value};
 use sqlx::PgConnection;
 
 use crate::{
-    api::js_trim,
     database::Database,
     features::{
         batch_pricing::queue as batch_queue,
@@ -29,6 +28,7 @@ use crate::{
         },
         publication_configuration, shipping_configuration,
     },
+    js_text::js_trim,
 };
 
 /// What queuing does with the batch: price it, or price it and publish what is ready.
@@ -673,66 +673,6 @@ pub async fn queued(
     .execute(&mut *conn)
     .await?;
     Ok(Queued { batch_number })
-}
-
-/// `createPendingInventoryBatchWithCost` from the batches screen, on `conn`, which the caller
-/// holds in a transaction: the counts as a batch once per request id, costed at the entered
-/// purchase total or else estimated for `seller` (none without one). The same request again
-/// answers its batch, costed again, which a repeated cost leaves as it was. Unlike [`queued`],
-/// nothing is queued for pricing. `purchase` is the body's purchase cost when it is truthy.
-pub async fn created(
-    conn: &mut PgConnection,
-    request_id: &str,
-    purchase: Option<&Value>,
-    seller: &str,
-) -> Result<i32, NotQueued> {
-    if purchase.is_some() && seller.is_empty() {
-        return Err(conflict(
-            "Configure a default shipping seller before recording purchase cost.",
-        ));
-    }
-    let purchase = purchase
-        .map(|value| match value {
-            Value::Object(fields) => purchase_cost(request_id, seller, fields),
-            // Anything else has no `allocationRule` to read.
-            _ => Err("Intake purchase cost supports quantity allocation.".to_owned()),
-        })
-        .transpose()
-        .map_err(invalid)?;
-    sqlx::query("SELECT pg_advisory_xact_lock(55, 0)")
-        .execute(&mut *conn)
-        .await?;
-    let repeated: Option<(i32, bool)> = sqlx::query_as(
-        "SELECT request.batch_number, batch.batch_number IS NOT NULL
-        FROM inventory_batch_intake_requests request
-        LEFT JOIN inventory_batches batch ON batch.batch_number = request.batch_number
-        WHERE request.request_id = $1",
-    )
-    .bind(request_id)
-    .fetch_optional(&mut *conn)
-    .await?;
-    let batch_number = match repeated {
-        Some((batch_number, true)) => batch_number,
-        Some((batch_number, false)) => {
-            return Err(conflict(format!(
-                "Request ID {request_id} already created deleted batch {batch_number}"
-            )));
-        }
-        None => create_batch(conn, request_id)
-            .await?
-            .ok_or_else(|| invalid("No pending inventory items available to batch"))?,
-    };
-    if let Some(mut cost) = purchase {
-        cost.batch_numbers = vec![batch_number];
-        purchase_cost::record(conn, &cost)
-            .await
-            .map_err(unrecorded)?;
-    } else if !seller.is_empty() {
-        estimate::record_batch(conn, seller, batch_number)
-            .await
-            .map_err(unrecorded)?;
-    }
-    Ok(batch_number)
 }
 
 /// Queues the counts as a batch (see [`queued`]) in a transaction of its own, against the

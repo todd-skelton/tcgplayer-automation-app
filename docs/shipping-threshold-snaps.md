@@ -67,6 +67,6 @@ at and under each threshold, and, for a selectable window, per threshold:
 
 Bulk buying of snapped prices, a fall in add-ons, or slower sales than the
 kept group are the signals to narrow the range or turn a threshold off.
-The report is served by `GET /api/shipping-thresholds?days=90`.
+The report is on the configuration screen (`GET /configuration/shipping-report`); its JSON route `/api/shipping-thresholds` was retired with the rest of `/api` ([Retiring the Node JSON routes](node-route-retirement.md)).
 
 Inventory Strategy previews price without snaps.

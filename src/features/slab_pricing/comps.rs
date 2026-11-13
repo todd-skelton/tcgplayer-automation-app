@@ -447,7 +447,7 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
                 _ => b.is_ascii_digit(),
             })
     };
-    let note = crate::api::js_trim(d.note);
+    let note = crate::js_text::js_trim(d.note);
     if !uuid(d.slab_id)
         || d.identity_revision < 1
         || !uuid(d.revision_id)

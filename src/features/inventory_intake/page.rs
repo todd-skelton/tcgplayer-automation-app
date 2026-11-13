@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use corten::{Mode, Refusal, http::StatusCode, prelude::*};
+use corten::{
+    Mode, Refusal,
+    http::{HeaderValue, StatusCode, header},
+    prelude::*,
+};
 
 use super::{
     catalog::{self, Condition, Product, ProductLine, ProductOrder, Scope, Set, Shown},
@@ -9,7 +13,8 @@ use super::{
     url::{self, Selection},
     views::{
         BATCHES_EVERY, BackgroundBatches, ClearConfirm, CountForm, Counted, IntakeError,
-        IntakeScreen, QueueForm, QueueNotice, QueueTotals, Queuing, UnqueuedCounts, label,
+        IntakeScreen, ListingParts, QueueForm, QueueNotice, QueueTotals, Queuing, UnqueuedCounts,
+        label,
     },
 };
 use crate::{
@@ -20,10 +25,36 @@ use crate::{
     tcgplayer::TcgPlayer,
 };
 
-/// Everything the screen draws for a selection.
+/// Everything the screen draws for a selection: what it lists, the product lines to choose from,
+/// and the counts not yet queued.
 pub struct Screen {
-    pub selection: Selection,
+    pub listing: Listing,
     pub lines: Vec<ProductLine>,
+    pub quantities: HashMap<i32, i32>,
+    pub totals: Totals,
+}
+
+impl Screen {
+    pub async fn read(db: &Database, selection: &Selection) -> sqlx::Result<Screen> {
+        let (lines, quantities, listing) = tokio::try_join!(
+            catalog::product_lines(db),
+            pending::quantities(db),
+            Listing::read(db, selection)
+        )?;
+        Ok(Screen {
+            listing,
+            lines,
+            totals: Totals::of(&quantities),
+            quantities,
+        })
+    }
+}
+
+/// What the screen lists for a selection: the line's sets and the set chosen, and the products
+/// the filters keep. Nothing in it changes with the counts or the batches, so a set's answer with
+/// JavaScript reads this alone, and the browser can keep it.
+pub struct Listing {
+    pub selection: Selection,
     pub line: i32,
     pub sets: Vec<Set>,
     pub set: Option<i32>,
@@ -38,18 +69,12 @@ pub struct Screen {
     pub page: usize,
     pub pages: usize,
     pub matched: usize,
-    pub quantities: HashMap<i32, i32>,
-    pub totals: Totals,
 }
 
-impl Screen {
-    pub async fn read(db: &Database, selection: &Selection) -> sqlx::Result<Screen> {
+impl Listing {
+    pub async fn read(db: &Database, selection: &Selection) -> sqlx::Result<Listing> {
         let line = selection.line.unwrap_or(catalog::DEFAULT_PRODUCT_LINE);
-        let (lines, sets, quantities) = tokio::try_join!(
-            catalog::product_lines(db),
-            catalog::sets(db, line),
-            pending::quantities(db)
-        )?;
+        let sets = catalog::sets(db, line).await?;
         let set = selection
             .set
             .filter(|id| sets.iter().any(|s| s.id == *id))
@@ -78,9 +103,8 @@ impl Screen {
             selection.rows.unwrap_or_default(),
         );
         let products = products.into_iter().cloned().collect();
-        Ok(Screen {
+        Ok(Listing {
             selection: selection.clone(),
-            lines,
             line,
             sets,
             set,
@@ -91,18 +115,34 @@ impl Screen {
             page,
             pages,
             matched,
-            totals: Totals::of(&quantities),
-            quantities,
         })
     }
 }
 
+/// How long the browser keeps a set's answer: choosing a set seen this long ago draws it with no
+/// request. It holds only the catalog, which changes when the catalog is loaded again, not while
+/// counting.
+const LISTING_KEPT: &str = "private, max-age=300";
+
+/// The screen for the filters in the query. With JavaScript the filters are a GET `data-patch`
+/// form, answered with what changes with them ([`ListingParts`]), read without the product lines,
+/// the counts or the batches, which the page on the screen already shows; the script draws the
+/// rows from it with the counts it holds.
 pub async fn show(
     req: Req,
     State(db): State<Database>,
     Params(at): Params<url::InventoryManager>,
 ) -> HtmlResult {
-    page(&req, &db, &at.selection, &Drawn::default()).await
+    if req.mode != Mode::Action {
+        return page(&req, &db, &at.selection, &Drawn::default()).await;
+    }
+    let listing = Listing::read(&db, &at.selection).await?;
+    let mut answer = req.patch(ListingParts { listing: &listing })?;
+    answer.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(LISTING_KEPT),
+    );
+    Ok(answer)
 }
 
 /// What a page is drawn with besides the stored state: its status, a refused change, and the queue
@@ -243,7 +283,10 @@ pub struct ClearInput {
     pub submit: SubmitKey,
 }
 
-/// Every count not yet queued removed; queued batches keep theirs.
+/// Every count not yet queued removed; queued batches keep theirs. With JavaScript, the totals
+/// and the counts as they are now, which the script writes into the rows on the page, as a
+/// queue's answer does: the set on the screen may not be the one the form was drawn for (a set's
+/// answer leaves the forms' addresses as they were). Without, the screen again.
 pub async fn clear(
     req: Req,
     State(db): State<Database>,
@@ -253,8 +296,18 @@ pub async fn clear(
     pending::clear(&db, input.submit.as_str())
         .await
         .map_err(|message| corten::Error::new(message).with_status(StatusCode::CONFLICT))?;
-    req.redirect(&url::InventoryManager {
-        selection: at.selection,
+    if req.mode != Mode::Action {
+        return req.redirect(&url::InventoryManager {
+            selection: at.selection,
+        });
+    }
+    let left = pending::quantities(&db).await?;
+    let totals = Totals::of(&left);
+    req.patch(html! {
+        <QueueTotals totals={totals} counted={&queue::fingerprint(&left)} />
+        <ClearConfirm selection={&at.selection} totals={totals} />
+        <UnqueuedCounts quantities={&left} />
+        <IntakeError message={None} />
     })
 }
 

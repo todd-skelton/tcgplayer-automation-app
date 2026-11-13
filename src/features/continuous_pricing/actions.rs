@@ -1,14 +1,16 @@
 //! The screen and its posts. A post sends the browser back to the page it came from, saying what
-//! it did; a refusal is that page with why, as a conflict.
+//! it did; a refusal is that page with why, as a conflict. A SKU turned on or off is answered in
+//! place with JavaScript: its card and a toast.
 use chrono::Utc;
 use corten::{Refusal, prelude::*};
+use corten_ui::Toast;
 
 use super::{
     refresh::{self, TcgPlayerSearch},
     scheduler,
     store::{self, Settings},
     url::{self, View},
-    views::{ContinuousScreen, Did, Problem, ScheduleForm},
+    views::{ContinuousScreen, Did, Problem, ScheduleForm, SkuRow},
 };
 use crate::{
     database::Database, features::batch_pricing::market::TcgPlayerMarket, layout::Layout,
@@ -288,6 +290,8 @@ pub struct SkuInput {
     pub enabled: bool,
 }
 
+/// The SKU enabled or paused. With JavaScript, its card as it is now, the toast that says so and
+/// no refusal left on the screen; without, the page again, saying so.
 pub async fn set_sku(
     req: Req,
     State(db): State<Database>,
@@ -299,21 +303,32 @@ pub async fn set_sku(
         let why = "No continuous pricing seller is configured.".to_owned();
         return refused(&req, &db, &at.view, why).await;
     }
-    if input.sku <= 0
-        || !store::set_enabled(&db, &settings.seller_key, input.sku, input.enabled).await?
-    {
+    let item = match input.sku {
+        sku if sku > 0 => store::set_enabled(&db, &settings.seller_key, sku, input.enabled).await?,
+        _ => None,
+    };
+    let Some(item) = item else {
         let why = format!(
             "SKU {} is not in the seller's tracked inventory.",
             input.sku
         );
         return refused(&req, &db, &at.view, why).await;
-    }
+    };
     let did = if input.enabled {
         Did::Enabled { sku: input.sku }
     } else {
         Did::Paused { sku: input.sku }
     };
-    req.redirect_with_notice(&url::ContinuousPricing { view: at.view }, did)
+    let said = did.to_string();
+    let (item, view, t) = (&item, &at.view, req.t());
+    let card = html! {
+        <SkuRow item={item} view={view} t={t} />
+        <Problem why={None} />
+        <Toast message={Some(said.as_str())} failed={false} />
+    };
+    let back = url::ContinuousPricing { view: view.clone() };
+    req.patch_or(card, || async { req.redirect_with_notice(&back, did) })
+        .await
 }
 
 /// Why the post was refused, as a conflict: with JavaScript (a `data-patch` form) only the

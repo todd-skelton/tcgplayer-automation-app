@@ -4,7 +4,7 @@ use super::format::{cents, days, fixed, instant};
 use crate::{
     features::inventory_strategy::{
         actions::TurnaroundInput,
-        screen::Screen,
+        screen::Turnaround,
         turnaround::{Confidence, EffectiveSource, Mode},
         turnaround_settings::MAXIMUM_MANUAL_DAYS,
         url::{self, View},
@@ -51,12 +51,13 @@ fn confidence_word(confidence: Confidence) -> &'static str {
 /// the capital-cycle model uses for this seller.
 #[component(css = super::strategy_screen::StrategyScreen)]
 pub fn TurnaroundPanel<'a>(
-    screen: &'a Screen,
+    view: &'a View,
+    turnaround: &'a Turnaround,
     input: &'a TurnaroundInput,
     errors: &'a Errors,
     t: Msg,
 ) -> impl Render {
-    let selection = &screen.turnaround;
+    let selection = &turnaround.selection;
     let evidence = selection.evidence.as_ref();
     let fallback =
         selection.setting.mode == Mode::Observed && !selection.fallback_reasons.is_empty();
@@ -113,11 +114,11 @@ pub fn TurnaroundPanel<'a>(
                     tone={StatTone::Neutral}
                 />
             </dl>
-            <TurnaroundForm view={&screen.view} input={input} errors={errors} />
-            if let Some(error) = &screen.reinvestment_error {
+            <TurnaroundForm view={view} input={input} errors={errors} />
+            if let Some(error) = &turnaround.reinvestment_error {
                 <Notice variant={AlertVariant::Warning}>{error}</Notice>
             }
-            if let Some(error) = screen.settings_error {
+            if let Some(error) = turnaround.settings_error {
                 <Notice variant={AlertVariant::Warning}>{error}</Notice>
             }
             if fallback {

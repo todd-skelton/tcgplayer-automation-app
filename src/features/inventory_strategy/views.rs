@@ -9,7 +9,10 @@ mod strategy_screen;
 mod turnaround_panel;
 mod verdict_panel;
 
-pub use strategy_screen::{AnalysisStatus, Problem, StrategyScreen};
+pub use strategy_screen::{
+    AnalysisStatus, PolicyPart, Problem, RealizedPart, SellingHistoryPart, StrategyScreen,
+    TurnaroundPart,
+};
 pub use turnaround_panel::TurnaroundForm;
 
 pub const COMPONENTS: &[Component] = &[StrategyScreen];
