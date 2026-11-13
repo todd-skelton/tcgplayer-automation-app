@@ -5,11 +5,9 @@
 //! scan the shipping workflow asks for (`catch_up`).
 pub mod api;
 pub mod catch_up;
-pub mod coverage;
 pub mod file_import;
 #[cfg(test)]
 mod fixtures;
-pub mod json_route;
 pub mod observation;
 pub mod shadow;
 pub mod store;

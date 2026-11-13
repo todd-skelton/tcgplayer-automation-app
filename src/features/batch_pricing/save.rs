@@ -192,7 +192,7 @@ pub fn batch_summary(
             Value::Null | Value::Bool(false) => "Unknown".to_owned(),
             Value::String(l) if l.is_empty() => "Unknown".to_owned(),
             Value::Number(n) if n.as_f64() == Some(0.0) => "Unknown".to_owned(),
-            other => crate::api::js_string(other),
+            other => crate::js_text::js_string(other),
         };
         quantity_total += quantity;
         add_total += add_quantity;

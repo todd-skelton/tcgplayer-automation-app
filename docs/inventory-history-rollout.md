@@ -2,7 +2,9 @@
 
 This runbook enables the receipt, publication, seller-order, opening-balance, FIFO, and shipping-history slices for one configured seller. It is a forward cutover. It preserves older evidence without claiming purchase dates, intake values, marketplace coverage, or stock movements that the application did not observe.
 
-The read-only `GET /api/inventory-history-diagnostics` endpoint is bound to the default shipping seller. It reports the latest order scan, applied opening cutoff, replay queue, held and unmatched quantities, unresolved inventory observations, missing received-lot snapshots, and publication failures/retries. Counts are evidence, not inferred stock corrections. A zero is a measured zero; unavailable dates and prices have their own quantities.
+The read-only `GET /api/inventory-history-diagnostics` endpoint was bound to the default shipping seller. It reported the latest order scan, applied opening cutoff, replay queue, held and unmatched quantities, unresolved inventory observations, missing received-lot snapshots, and publication failures/retries. Counts are evidence, not inferred stock corrections. A zero is a measured zero; unavailable dates and prices have their own quantities.
+
+The JSON routes this runbook calls (`/api/inventory-history-diagnostics`, `/api/seller-order-history`, `/api/inventory-fifo` and `/api/inventory-opening-balance`) were retired with the rest of `/api` ([Retiring the Node JSON routes](node-route-retirement.md)), and the diagnostics, opening balance and FIFO operator actions went with them. The seller order history worker still scans and replays FIFO, and the shipping workflow still asks for a catch-up scan of the orders it loads. The steps below are the record of the rollout as it was run.
 
 ## Before changing the running application
 

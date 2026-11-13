@@ -18,7 +18,7 @@ Jobs have a 60-second execution signal and the underlying provider's 30-second H
 
 Development starts the loop on an evidence request. Production has a dedicated `slab-evidence-worker` entrypoint and Compose service using the existing application image and PostgreSQL. Run it separately with `npm run start:slab-evidence-worker`. It cannot consume a TCG pricing-worker slot. No new dependency, cache service or queue infrastructure is added. Production configuration was validated but not deployed.
 
-`/api/slab-evidence` GET accepts comma-separated `keys` for statuses, or `revision` and `offset` for a fifty-observation page. POST requires same origin and a JSON body bounded to 16 KiB. Intents are `refresh` (slab IDs/window, optional supply/force), `cancel` (key/run ID), `sale-detail` (an Alt transaction from a persisted revision), and `next-page` (an eBay revision with a next page). Page/detail work is lazy. API responses contain no credentials. The UI follows in #28.
+The Slab Pricing screen reads the evidence (`GET /slab-pricing/evidence`) and queues its work: a refresh (`POST /slab-pricing/refresh`, and `refresh-supply`), a cancel (`cancel`), a sale's details (`fetch-comps`) and an eBay source's next page (`next-source-page`). Page/detail work is lazy. The JSON route `/api/slab-evidence` was retired with the rest of `/api` ([Retiring the Node JSON routes](node-route-retirement.md)).
 
 ## Retention and measurements
 

@@ -137,7 +137,7 @@ pub async fn items(
     Ok(items)
 }
 
-/// The largest CSV export taken, by the screen and the JSON route alike.
+/// The largest CSV export the screen takes.
 pub const MOST_EXPORT_BYTES: usize = 20 << 20;
 
 /// Why no batch was made, in the Node app's words: nothing in the import it could keep (its

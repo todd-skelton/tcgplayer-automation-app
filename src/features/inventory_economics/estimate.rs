@@ -462,39 +462,6 @@ pub struct Estimated {
     pub market_unavailable: BTreeMap<i32, Vec<i32>>,
 }
 
-impl Estimated {
-    /// As Node's `EstimatedPurchaseCostRun` writes it, with the rule it estimated under.
-    pub fn node_json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "rule": {
-                "version": RULE_VERSION,
-                "marketRate": CostRate::DEFAULT.market_rate,
-                "perUnitDeductionCents": CostRate::DEFAULT.per_unit_deduction_cents,
-                "currency": "USD",
-            },
-            "recorded": self.recorded,
-            "repeated": self.repeated,
-            "unchanged": self.unchanged,
-            "marketUnavailable": self.market_unavailable.iter()
-                .map(|(batch, receipts)| serde_json::json!({ "batchNumber": batch, "receiptIds": receipts }))
-                .collect::<Vec<_>>(),
-        })
-    }
-}
-
-/// `recordEstimatedPurchaseCosts`: estimates the seller's batches no entered purchase cost owns,
-/// the first 100 of `batch_numbers` (or of them all), each saved in a transaction of its own.
-pub async fn record_estimates(
-    conn: &mut sqlx::PgConnection,
-    seller: &str,
-    batch_numbers: Option<&[i32]>,
-) -> Result<Estimated, NotRecorded> {
-    let batches = estimable(&mut *conn, seller, batch_numbers, 100)
-        .await
-        .map_err(|e| NotRecorded::Failed(e.to_string()))?;
-    record(conn, seller, &batches).await
-}
-
 /// `recordMissingEstimatedPurchaseCosts`: estimates every batch with a lot no purchase cost owns
 /// yet, or does nothing when there is none. Each estimate is saved in a transaction of its own on
 /// `conn` (a savepoint when `conn` is already in one), so one that fails keeps those before it.

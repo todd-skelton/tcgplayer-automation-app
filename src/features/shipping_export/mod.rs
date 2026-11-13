@@ -31,13 +31,10 @@
 //! | `POST /shipping-export/order-labels/{order}/form` | the order's label form drawn again for the labels and service chosen |
 //! | `POST /shipping-export/order-labels/{order}` | an outbound label, a return label or both bought for the order |
 //! | `POST /shipping-export/new-batch` | the batch dropped |
-//!
-//! Its JSON route, `POST /api/shipping-export/intake-history`, is in [`json_route`].
 mod buying;
 mod easypost;
 mod editing;
 mod intake_history;
-pub mod json_route;
 mod labels;
 mod one_at_a_time;
 mod orders;

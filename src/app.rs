@@ -1,4 +1,4 @@
-//! The app: its routes, its screens and JSON routes, and its workers.
+//! The app: its routes, its screens and its workers.
 use std::time::Duration;
 
 use corten::{prelude::*, security::Policy};
@@ -43,32 +43,12 @@ pub mod url {
     pub struct Home;
 }
 
-/// The JSON routes' prefix: each feature's routes are added under it (`crate::api::ported`). Some
-/// (imports, slab evidence) answer after the page deadline, and the batch pricing stream stays
-/// open for as long as the page does.
-#[corten::routes(api = ApiRoot, state = Shared)]
-pub mod api {
-    #[route("/api")]
-    pub struct ApiRoot;
-}
-
 use dashboard::show as show_home;
-
-/// The API's own failures (an unknown method, the deadline, the Node app out of reach) in the Node
-/// app's shape.
-fn node_shaped<P: corten::Route>(api: corten::Api<P>) -> corten::Api<P> {
-    api.errors(|_, message| serde_json::json!({ "error": message }))
-}
 
 pub fn app(shared: Shared) -> App {
     let ready = shared.db.clone();
     let db = shared.db.clone();
     let app = App::new(url::router(shared.clone()))
-        .api(|routes| {
-            let routes =
-                api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60)));
-            node_shaped(crate::api::ported(routes, &shared))
-        })
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
         // Adding units to a count reads the card's market price from TCGplayer, giving up after 3 s.
         .area(|area| {

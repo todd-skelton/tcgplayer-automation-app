@@ -2,7 +2,7 @@
 //! reviewed (`getInventory`). Importing them and tying one to an identity are `inventory_import`.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::identity::{Candidate, SlabIdentity};
 use crate::{database::Database, features::slab_connections::ConnectionStatus, row_order::Key};
@@ -372,8 +372,8 @@ fn review_reasons(
 macro_rules! reviewed {
     ($rest:literal) => {
         concat!(
-            r#"SELECT s.id::text AS id, s.seller, s.item_id, s.variation_key, s.snapshot, s.source, s.state, s.revision,
-    s.identity_id::text AS identity_id, s.identity_source, s.identity_note, s.observed_at,
+            r#"SELECT s.id::text AS id, s.seller, s.item_id, s.variation_key, s.snapshot, s.state, s.revision,
+    s.identity_id::text AS identity_id, s.observed_at,
     (SELECT jsonb_build_object('id', i.id, 'grader', i.grader, 'certificateNumber', i.certificate_number, 'candidate', i.candidate,
       'identity', i.identity, 'status', i.status, 'reviewReasons', i.review_reasons, 'valuationGroupKey', i.valuation_group_key,
       'revision', i.revision) FROM slab_identities i WHERE i.id = s.identity_id) AS identity,
@@ -399,12 +399,9 @@ struct Saved {
     item_id: String,
     variation_key: String,
     snapshot: Value,
-    source: String,
     state: String,
     revision: i32,
     identity_id: Option<String>,
-    identity_source: Option<String>,
-    identity_note: Option<String>,
     observed_at: DateTime<Utc>,
     identity: Option<Value>,
     duplicate_certificate: bool,
@@ -453,30 +450,6 @@ impl Saved {
             identity_id: self.identity_id,
             identity,
         })
-    }
-
-    /// `reviewInventoryRow` as the Node route answered it: every column, the identity and
-    /// snapshot as saved.
-    fn answered(self) -> Result<Value, String> {
-        let (_, _, review_reasons) = self.read()?;
-        Ok(json!({
-            "id": self.id,
-            "seller": self.seller,
-            "itemId": self.item_id,
-            "variationKey": self.variation_key,
-            "snapshot": self.snapshot,
-            "source": self.source,
-            "state": self.state,
-            "revision": self.revision,
-            "identityId": self.identity_id,
-            "identitySource": self.identity_source,
-            "identityNote": self.identity_note,
-            "observedAt": self.observed_at(),
-            "identity": self.identity,
-            "duplicateCertificate": self.duplicate_certificate,
-            "url": self.url(),
-            "reviewReasons": review_reasons,
-        }))
     }
 }
 
@@ -534,24 +507,6 @@ async fn read(
         next,
         revision: page.revision,
     })
-}
-
-/// `getInventory` as the Node route answered it: `{ items, next, revision }`, each listing with
-/// every column.
-pub(super) async fn answered_page(
-    conn: &mut sqlx::PgConnection,
-    seller: &str,
-    after: &str,
-    limit: u32,
-) -> Result<Value, String> {
-    let page = saved_page(conn, seller, after, limit).await?;
-    let next = page.next();
-    let items = page
-        .rows
-        .into_iter()
-        .map(Saved::answered)
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(json!({ "items": items, "next": next, "revision": page.revision }))
 }
 
 async fn saved_page(

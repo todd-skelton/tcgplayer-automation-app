@@ -12,7 +12,7 @@ Known fields are preserved; unknown language, edition and stamp stay null. Alt's
 
 `slabIdentityService.confirm(certificate, revision, identity, note)` records explicit confirmation or correction. It requires the known grader, an exact grade label and a decision note. Unknown card fields can remain null. Confirmation is not proof that enough evidence exists to price the group. A stale revision produces a conflict rather than overwriting another decision.
 
-Both operations are exposed by same-origin `POST /api/slab-identities`, using JSON with `intent: "lookup"` or `intent: "confirm"`, `grader`, `certificateNumber`, and the operation's remaining fields. Lookup takes `expected` and `refresh`; confirmation takes `revision`, `identity`, and `note`. The review UI is tracked separately in #28.
+Both operations are on the Slab Pricing screen: `POST /slab-pricing/look-up` and `POST /slab-pricing/confirm`. The JSON route `/api/slab-identities` was retired with the rest of `/api` ([Retiring the Node JSON routes](node-route-retirement.md)).
 
 Valuation groups hash ordered card fields, provider asset reference, grader, resolved grade/label, qualifiers and autograph. Certificates are excluded so identical slabs share evidence. Unknown fields remain distinct from specified fields. Every decision advances `revision`; later recommendations must store `{ slabId, revision, valuationGroupKey }` and use `isCurrentIdentity` before displaying them as current or publishing. Corrections therefore invalidate older references, including a correction that later returns to the original group. No unused recommendation table is introduced here.
 

@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 pub mod cost_model;
 pub mod evidence;
-pub mod json_route;
 pub mod outcomes;
 pub mod report;
 
