@@ -189,7 +189,7 @@ async fn set_products(
                     .await
                     .map_err(failed)?;
             }
-            Err(e) => eprintln!(
+            Err(e) => tracing::error!(
                 "Could not fetch sets for category {}: {e}",
                 line.product_line_id
             ),

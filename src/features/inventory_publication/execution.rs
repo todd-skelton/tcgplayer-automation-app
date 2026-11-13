@@ -214,7 +214,7 @@ async fn record_health(conn: &mut PgConnection, failure: Option<&Failure>) {
         } else {
             "success"
         };
-        eprintln!("Could not record Seller Portal {what} health: {why}");
+        tracing::error!("Could not record Seller Portal {what} health: {why}");
     }
 }
 
@@ -229,7 +229,7 @@ async fn record_projection(
         tx.commit().await
     };
     if let Err(why) = saved.await {
-        eprintln!("Could not record continuous publication projection: {why}");
+        tracing::error!("Could not record continuous publication projection: {why}");
     }
 }
 
@@ -245,7 +245,7 @@ async fn record_rolled_back(conn: &mut PgConnection, publication: &Publication) 
     };
     let skus: Vec<i32> = publication.items.iter().map(|item| item.sku).collect();
     if let Err(why) = save::record_batch_failed(conn, batch, Some(&skus)).await {
-        eprintln!(
+        tracing::error!(
             "Could not schedule rolled-back publication {}'s SKUs again: {why}",
             publication.id
         );

@@ -487,7 +487,7 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
         ));
     }
     let failed = |error: sqlx::Error| {
-        eprintln!("slab comp decision: {error}");
+        tracing::error!("slab comp decision: {error}");
         NotDecided::Failed("Unable to save the comp review.".to_owned())
     };
     let mut tx = conn.begin().await.map_err(failed)?;

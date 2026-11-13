@@ -87,8 +87,8 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, signal: &Signal) -> Outcom
                 _ = jobs.progress_due(job) => match timeout(RENEWAL, jobs.renew(job)).await {
                     Ok(Ok(true)) => {}
                     Ok(Ok(false)) => break Outcome::LeaseLost,
-                    Ok(Err(why)) => eprintln!("Pricing job progress failed to save: {why}"),
-                    Err(_) => eprintln!("Pricing job progress save timed out after {RENEWAL:?}"),
+                    Ok(Err(why)) => tracing::error!("Pricing job progress failed to save: {why}"),
+                    Err(_) => tracing::warn!("Pricing job progress save timed out after {RENEWAL:?}"),
                 },
                 _ = heartbeat.tick() => {
                     // A renewal that hangs is given up after its budget, and the next one is
@@ -99,15 +99,15 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, signal: &Signal) -> Outcom
                         Ok(Ok(true)) => {}
                         Ok(Ok(false)) => break Outcome::LeaseLost,
                         // Retried at the next beat; the lease outlasts several.
-                        Ok(Err(why)) => eprintln!("Pricing job heartbeat failed: {why}"),
-                        Err(_) => eprintln!("Pricing job heartbeat timed out after {RENEWAL:?}"),
+                        Ok(Err(why)) => tracing::error!("Pricing job heartbeat failed: {why}"),
+                        Err(_) => tracing::warn!("Pricing job heartbeat timed out after {RENEWAL:?}"),
                     }
                 }
             }
         }
     };
     if let Err(why) = jobs.finished(job, &outcome).await {
-        eprintln!("Pricing job could not be marked {outcome:?}: {why}");
+        tracing::error!("Pricing job could not be marked {outcome:?}: {why}");
     }
     outcome
 }
@@ -131,7 +131,7 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
                 continue;
             }
             Ok(None) => {}
-            Err(why) => eprintln!("Pricing worker failed: {why}"),
+            Err(why) => tracing::error!("Pricing worker failed: {why}"),
         }
         // A sleep from now, not an interval: a long job must not leave ticks owed.
         tokio::select! {

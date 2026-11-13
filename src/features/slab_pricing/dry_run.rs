@@ -27,13 +27,13 @@ struct Unavailable;
 
 impl From<sqlx::Error> for Unavailable {
     fn from(error: sqlx::Error) -> Self {
-        eprintln!("slab publication: {error}");
+        tracing::error!("slab publication: {error}");
         Unavailable
     }
 }
 
 fn unavailable(error: sqlx::Error) -> String {
-    eprintln!("slab publication: {error}");
+    tracing::error!("slab publication: {error}");
     UNAVAILABLE.to_owned()
 }
 

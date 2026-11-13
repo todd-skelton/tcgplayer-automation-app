@@ -136,7 +136,7 @@ async fn sync_line(
             needs_sync(*count, *stored, verified.get(&set.set_name_id).copied())
         })
         .collect();
-    eprintln!(
+    tracing::info!(
         "[syncNewCatalogProducts] {}: {} of {} sets changed",
         line.product_line_name,
         to_sync.len(),
@@ -173,7 +173,7 @@ async fn sync_set(
         ..SetSync::default()
     };
     if let Err(problem) = synced(conn, catalog, line, set, listed, &mut result).await {
-        eprintln!("[syncNewCatalogProducts] {} failed: {problem}", set.name);
+        tracing::error!("[syncNewCatalogProducts] {} failed: {problem}", set.name);
         result.problem = Some(problem);
     }
     result

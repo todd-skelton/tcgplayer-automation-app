@@ -613,7 +613,7 @@ pub async fn prepare(
 ) -> Result<String, String> {
     let asked = checked(asked)?;
     let failed = |error: sqlx::Error| {
-        eprintln!("slab publication preview: {error}");
+        tracing::error!("slab publication preview: {error}");
         UNAVAILABLE.to_owned()
     };
     let previous: Option<Value> =

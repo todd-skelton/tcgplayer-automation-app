@@ -209,7 +209,7 @@ const CHANGED: &str = "Maintenance settings changed. Reload before saving.";
 
 /// Node hid what went wrong with the database behind this.
 fn unavailable(error: sqlx::Error) -> String {
-    eprintln!("slab maintenance: {error}");
+    tracing::error!("slab maintenance: {error}");
     "Maintenance is unavailable.".to_owned()
 }
 

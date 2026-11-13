@@ -441,7 +441,7 @@ impl Evidence for TcgPlayerEvidence {
             .get(Domain::InfiniteApi, &path, Call::READ)
             .await
             .inspect_err(|e| {
-                eprintln!("Failed to fetch price history for product {product_id}: {e}")
+                tracing::warn!("Failed to fetch price history for product {product_id}: {e}")
             })
             .ok()?;
         let weeks = ledger::weekly_sales(product_id, &answer.result);
@@ -481,9 +481,11 @@ impl Evidence for TcgPlayerEvidence {
                 supply
             }
             Err(e) => {
-                eprintln!(
+                tracing::warn!(
                     "Failed to fetch listings for product {} ({}, {}): {e}",
-                    sku.product_id, sku.variant, sku.language
+                    sku.product_id,
+                    sku.variant,
+                    sku.language
                 );
                 Supply {
                     status: SupplyStatus::Unavailable,
@@ -510,7 +512,9 @@ impl Evidence for TcgPlayerEvidence {
             .tcg
             .post(Domain::MpSearchApi, &path, &query, Call::READ)
             .await
-            .inspect_err(|e| eprintln!("Failed to fetch lowest listing for SKU {}: {e}", sku.sku))
+            .inspect_err(|e| {
+                tracing::warn!("Failed to fetch lowest listing for SKU {}: {e}", sku.sku)
+            })
             .ok()?;
         lowest_ask(
             answer.results.first().map_or(&[][..], |p| &p.results),

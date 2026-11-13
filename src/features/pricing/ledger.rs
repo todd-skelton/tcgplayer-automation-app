@@ -299,7 +299,7 @@ where
     tokio::spawn(async move {
         let written = async { write(pool.acquire().await?).await };
         if let Err(why) = written.await {
-            eprintln!("Recording {what} failed: {why}");
+            tracing::error!("Recording {what} failed: {why}");
         }
     });
 }

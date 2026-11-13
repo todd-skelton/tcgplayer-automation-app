@@ -145,7 +145,7 @@ impl Drop for Renewal<'_> {
     fn drop(&mut self) {
         if let Some(phase) = self.phase {
             let (size, idle) = (self.pool.size(), self.pool.num_idle());
-            eprintln!("{}", given_up(phase, self.started.elapsed(), size, idle));
+            tracing::warn!("{}", given_up(phase, self.started.elapsed(), size, idle));
         }
     }
 }
@@ -238,11 +238,15 @@ pub async fn follow_up(
     let curves_recorded = save::record_successful_batch(conn, batch_number)
         .await
         .inspect_err(|why| {
-            eprintln!("Inventory strategy projection update failed for batch {batch_number}: {why}")
+            tracing::error!(
+                "Inventory strategy projection update failed for batch {batch_number}: {why}"
+            )
         })
         .unwrap_or(0);
     if let Err(why) = save::record_batch_completed(conn, batch_number).await {
-        eprintln!("Continuous pricing projection update failed for batch {batch_number}: {why}");
+        tracing::error!(
+            "Continuous pricing projection update failed for batch {batch_number}: {why}"
+        );
     }
     let planned = async {
         let configuration = Configuration::load(conn).await?;
@@ -257,7 +261,9 @@ pub async fn follow_up(
         curves_recorded,
         planned: planned
             .inspect_err(|why| {
-                eprintln!("Automatic publication planning failed for batch {batch_number}: {why}")
+                tracing::error!(
+                    "Automatic publication planning failed for batch {batch_number}: {why}"
+                )
             })
             .ok(),
     }
@@ -382,7 +388,7 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
                     let (db, batch) = (self.db.clone(), claimed.batch_number);
                     tokio::spawn(async move {
                         if let Err(why) = strategy::warm(&db).await {
-                            eprintln!(
+                            tracing::error!(
                                 "Inventory strategy warm-up failed after batch {batch}: {why}"
                             );
                         }

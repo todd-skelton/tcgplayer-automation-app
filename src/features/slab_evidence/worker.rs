@@ -218,7 +218,7 @@ pub async fn tick(
         Ok::<_, store::Error>(())
     };
     if let Err(why) = turn.await {
-        eprintln!("Slab evidence worker refresh unavailable; retrying later: {why}");
+        tracing::warn!("Slab evidence worker refresh unavailable; retrying later: {why}");
     }
     wait
 }

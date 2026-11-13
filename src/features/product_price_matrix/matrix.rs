@@ -615,7 +615,7 @@ async fn store_listings(db: &Database, skus: &[i64]) -> (Option<String>, Vec<Lis
         Ok::<_, sqlx::Error>((Some(seller), listings))
     };
     read.await.unwrap_or_else(|error| {
-        eprintln!("[product-price-matrix] Store listings unavailable: {error}");
+        tracing::error!("[product-price-matrix] Store listings unavailable: {error}");
         (None, Vec::new())
     })
 }

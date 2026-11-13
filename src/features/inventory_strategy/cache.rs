@@ -101,7 +101,7 @@ impl<V: Clone + Send + Sync + 'static> VersionedCache<V> {
                     match &result {
                         Ok(value) => entry.ready = Some((version, value.clone())),
                         Err(why) if entry.ready.is_some() => {
-                            eprintln!("{} rebuild failed: {why}", self.name)
+                            tracing::error!("{} rebuild failed: {why}", self.name)
                         }
                         Err(_) => {}
                     }

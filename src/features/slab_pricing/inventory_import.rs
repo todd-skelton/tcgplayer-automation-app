@@ -253,7 +253,7 @@ pub struct Imported {
 }
 
 fn unavailable(error: sqlx::Error) -> Refused {
-    eprintln!("slab inventory import: {error}");
+    tracing::error!("slab inventory import: {error}");
     Refused::Unavailable
 }
 
