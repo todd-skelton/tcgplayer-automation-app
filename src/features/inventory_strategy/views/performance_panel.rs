@@ -9,6 +9,7 @@ use crate::{
         levers::{HurdleChange, Lever, LineReturn},
         performance::{PerformanceSummary, PerformanceWindow, RealizedWindow},
         pricing_changes::format_hurdle,
+        realized::Realized,
         screen::Screen,
         url::{InventoryStrategy, View},
     },
@@ -42,10 +43,10 @@ pub fn realized_choice(screen: &Screen) -> Chosen<RealizedWindowId, RealizedWind
 #[component]
 fn WindowChoice<'a>(
     screen: &'a Screen,
+    windows: &'a [PerformanceWindow],
     choice: &'a Chosen<RealizedWindowId, RealizedWindow>,
 ) -> impl Render {
-    let links: Vec<(RealizedWindow, InventoryStrategy)> = screen
-        .windows()
+    let links: Vec<(RealizedWindow, InventoryStrategy)> = windows
         .iter()
         .filter_map(|w| RealizedWindow::of(w.window_days))
         .map(|w| {
@@ -74,9 +75,9 @@ fn WindowChoice<'a>(
 /// What the current strategy has actually earned: margin, profit per day, and return on capital
 /// from sold units, against the configured hurdle.
 #[component(css = super::strategy_screen::StrategyScreen)]
-pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
+pub fn PerformancePanel<'a>(screen: &'a Screen, realized: &'a Realized, t: Msg) -> impl Render {
     let hurdle = screen.hurdle();
-    let windows = screen.windows();
+    let windows = realized.windows();
     let choice = realized_choice(screen);
     html! {
         <section class={CardPanel { size: CardSize::Sm }} aria-labelledby="realized-performance">
@@ -99,13 +100,13 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 }
                 <span class={Grow}></span>
                 if !windows.is_empty() {
-                    <WindowChoice screen={screen} choice={&choice} />
+                    <WindowChoice screen={screen} windows={windows} choice={&choice} />
                 }
             </div>
             <p class={muted()}>
                 "Sold units at their share of the order's net proceeds after fees, postage, and refunds, less the lot's cost. Costs are the estimated purchase rule unless recorded."
             </p>
-            if let Some(error) = screen.performance_error {
+            if let Some(error) = realized.error {
                 <Notice variant={AlertVariant::Warning}>{error}</Notice>
             }
             if windows.is_empty() {
@@ -116,7 +117,7 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     <WindowFigures window={window} t={t} />
                 </ShownFor>
             }
-            if let Some(report) = &screen.performance {
+            if let Some(report) = &realized.report {
                 <p class={(muted(), Caption)}>
                     "As of "{t.date(report.as_of, DateStyle::Short)}
                     if let Some(first) = report.first_sale_at {
