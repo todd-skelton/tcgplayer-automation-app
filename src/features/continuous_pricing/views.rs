@@ -9,7 +9,7 @@ pub use continuous_screen::{ContinuousScreen, Problem, ScheduleForm, SkuRow};
 
 pub const COMPONENTS: &[Component] = &[ContinuousScreen];
 
-/// A cycle's outcome as the Node app names it.
+/// A cycle's outcome in the scheduler's words, as the notice after a run says it.
 fn word(cycle: Cycle) -> &'static str {
     match cycle {
         Cycle::Disabled => "disabled",
@@ -24,7 +24,7 @@ fn queued(batch_number: i32, item_count: usize) -> String {
     format!("Queued batch {batch_number} with {item_count} SKUs.")
 }
 
-/// What a post did; the notice on the page it redirects to says it, as the React screen did.
+/// What a post did; the notice on the page it redirects to says it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Did {
     Saved,

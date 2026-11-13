@@ -10,7 +10,7 @@ use crate::{
         actions::{CalculateInput, ReviewAskInput},
         identity::{Record, words},
         page::{Place, Screen},
-        recommendation::{BASES, Calculation, Recommendation, Reference, amount},
+        recommendation::{Calculation, PriceBasis, Recommendation, Reference, amount},
         url,
         views::{Problem, PublicationPanel},
     },
@@ -218,8 +218,8 @@ fn CostsForm<'a>(
 fn BasisSelect<'a, I: Id>(control: corten::form::Control<'a, I>, chosen: &'a str) -> impl Render {
     html! {
         <select class={Select {}} {..control}>
-            for (value, label) in BASES {
-                <option value={value} selected={chosen == value}>{label}</option>
+            for basis in PriceBasis::ALL {
+                <option value={basis} selected={chosen == basis.as_ref()}>{basis.label()}</option>
             }
         </select>
     }
@@ -302,8 +302,8 @@ fn EvidenceUsed<'a>(calculation: &'a Calculation) -> impl Render {
     }
 }
 
-/// One line per event, as the React panel wrote them: accepted comps, then the ones it was
-/// unsure of or rejected, then the ones left out of the range.
+/// One line per event: accepted comps, then the ones the calculation was unsure of or rejected,
+/// then the ones left out of the range.
 fn decisions(c: &Calculation) -> Vec<String> {
     let refs = |references: &[Reference]| {
         references

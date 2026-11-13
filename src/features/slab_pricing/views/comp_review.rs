@@ -4,7 +4,7 @@ use corten_ui::{dialog, ordered, rows};
 use crate::{
     features::slab_pricing::{
         actions::{CompDecisionInput, FetchCompsInput},
-        comps::{CompColumn, Review, Row, money},
+        comps::{CompColumn, Review, Row, Verdict, money},
         identity::words,
         page::{Place, Screen},
         url::{self, Choice},
@@ -339,8 +339,10 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             <input type="hidden" name={f.date} value={sale.date.as_deref().unwrap_or("")}>
             <Field id={e.id(f.decision)} label="Comp decision" hint="" error="">
                 <select class={Select {}} {..e.control(f.decision)}>
-                    <option value="accept" selected={!excluded}>"Include after review"</option>
-                    <option value="exclude" selected={excluded}>"Exclude"</option>
+                    <option value={Verdict::Accept} selected={!excluded}>
+                        "Include after review"
+                    </option>
+                    <option value={Verdict::Exclude} selected={excluded}>"Exclude"</option>
                 </select>
             </Field>
             <Field

@@ -11,8 +11,8 @@ pub struct Window {
 }
 
 impl Window {
-    /// The days asked for when they are one of `windows`, else `default`: the Node routes refuse
-    /// any other.
+    /// The days asked for when they are one of `windows`, else `default`: no other window is
+    /// offered.
     pub fn days_in(self, windows: &[u32], default: u32) -> u32 {
         self.days
             .filter(|days| windows.contains(days))

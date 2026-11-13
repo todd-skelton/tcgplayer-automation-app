@@ -36,19 +36,20 @@ pub struct AddressInput {
     pub country: String,
 }
 
-/// One package's inputs, as text. A parcel has no limits, so its form sends none.
+/// One package's inputs, as typed. A parcel has no limits, so its form sends none and they stay
+/// blank.
 #[derive(Clone, Debug, Fields)]
 pub struct PackageInput {
     pub label_size: LabelSize,
-    pub base_weight_oz: String,
-    pub per_item_weight_oz: String,
+    pub base_weight_oz: Entry<f64>,
+    pub per_item_weight_oz: Entry<f64>,
     #[serde(default)]
-    pub max_item_count: Option<String>,
+    pub max_item_count: Entry<f64>,
     #[serde(default)]
-    pub max_value_usd: Option<String>,
-    pub length_in: String,
-    pub width_in: String,
-    pub height_in: String,
+    pub max_value_usd: Entry<f64>,
+    pub length_in: Entry<f64>,
+    pub width_in: Entry<f64>,
+    pub height_in: Entry<f64>,
 }
 
 /// A kind of package, each with its own block of the form.
@@ -94,10 +95,9 @@ impl Kind {
     }
 }
 
-/// A number as the form shows it: `0.6`, not `0.6000000000000001`.
-pub fn measure_text(n: f64) -> String {
-    let rounded = (n * 1e6).round() / 1e6;
-    rounded.to_string()
+/// A measure as the form shows it, to six places: `0.6`, not `0.6000000000000001`.
+pub fn measure(n: f64) -> Entry<f64> {
+    ((n * 1e6).round() / 1e6).into()
 }
 
 fn optional(text: &str) -> Option<String> {
@@ -107,27 +107,29 @@ fn optional(text: &str) -> Option<String> {
 
 impl PackageInput {
     fn of(package: &Package, limited: bool) -> Self {
-        let limit = |n: Option<f64>| limited.then(|| measure_text(n.unwrap_or(0.0)));
+        let limit = |n: Option<f64>| match limited {
+            true => measure(n.unwrap_or(0.0)),
+            false => Entry::default(),
+        };
         PackageInput {
             label_size: package.label_size,
-            base_weight_oz: measure_text(package.base_weight_oz),
-            per_item_weight_oz: measure_text(package.per_item_weight_oz),
+            base_weight_oz: measure(package.base_weight_oz),
+            per_item_weight_oz: measure(package.per_item_weight_oz),
             max_item_count: limit(package.max_item_count),
             max_value_usd: limit(package.max_value_usd),
-            length_in: measure_text(package.length_in),
-            width_in: measure_text(package.width_in),
-            height_in: measure_text(package.height_in),
+            length_in: measure(package.length_in),
+            width_in: measure(package.width_in),
+            height_in: measure(package.height_in),
         }
     }
 
-    /// The package the inputs say; a measure that is not a number of at least zero is an error on
-    /// its own input. Every measure is checked; the React app saved whatever `Number()` made of
-    /// it, blanks as 0.
+    /// The package the inputs say; a measure that is not a number of at least zero, blank
+    /// included, is an error on its own input.
     fn read(&self, kind: Kind, errors: &mut Errors) -> Package {
         let f = kind.fields();
-        let mut number = |field, text: &str, what: &str| -> f64 {
-            match text.trim().parse::<f64>() {
-                Ok(n) if n.is_finite() && n >= 0.0 => n,
+        let mut number = |field, entry: &Entry<f64>, what: &str| -> f64 {
+            match entry.value() {
+                Some(n) if n >= 0.0 => n,
                 _ => {
                     errors.add(
                         field,
@@ -145,16 +147,8 @@ impl PackageInput {
         );
         let limits = kind.limited().then(|| {
             (
-                number(
-                    f.max_item_count,
-                    self.max_item_count.as_deref().unwrap_or(""),
-                    "the max item count",
-                ),
-                number(
-                    f.max_value_usd,
-                    self.max_value_usd.as_deref().unwrap_or(""),
-                    "the max value",
-                ),
+                number(f.max_item_count, &self.max_item_count, "the max item count"),
+                number(f.max_value_usd, &self.max_value_usd, "the max value"),
             )
         });
         Package {
@@ -262,7 +256,7 @@ mod tests {
     #[test]
     fn a_measure_that_is_not_a_number_names_its_package() {
         let mut input = SettingsInput::of(&ShippingConfig::default());
-        input.flat.width_in = "wide".into();
+        input.flat.width_in = Entry::typed("wide");
         let errors = input.read().unwrap_err();
         assert!(!errors.has(SettingsInput::FIELDS.letter.width_in));
         assert_eq!(

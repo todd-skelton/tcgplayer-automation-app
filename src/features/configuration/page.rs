@@ -103,7 +103,7 @@ fn hurdle(config: &Config) -> Option<f64> {
 
 fn default_input(config: &Config) -> DefaultPercentileInput {
     DefaultPercentileInput {
-        default_percentile: config.product_lines.default_percentile.to_string(),
+        default_percentile: config.product_lines.default_percentile.into(),
     }
 }
 

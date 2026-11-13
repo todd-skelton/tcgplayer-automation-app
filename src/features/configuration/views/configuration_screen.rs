@@ -135,10 +135,10 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
     let (input, errors) = (section.input, section.errors);
     let f = PricingInput::FIELDS;
     let number =
-        move |name: FieldName<String>,
+        move |name: FieldName<Entry<f64>>,
               label: &'static str,
               hint: &'static str,
-              value: &'a str,
+              value: &'a Entry<f64>,
               (step, min, max): (&'static str, &'static str, &'static str)| {
             html! {
                 let e = errors.within(PricingFormId);

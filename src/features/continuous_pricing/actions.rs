@@ -101,8 +101,8 @@ impl ScheduleInput {
         }
     }
 
-    /// The schedule the form says, or what is wrong with it. The React screen saved an
-    /// out-of-range number as its default without saying so.
+    /// The schedule the form says, or what is wrong with it: a number out of its range is named,
+    /// not saved as its default.
     pub fn read(&self, saved: &Settings) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
@@ -218,7 +218,7 @@ pub async fn run(req: Req, State(db): State<Database>, Params(at): Params<url::R
 
 /// Reprices the inventory from saved curves where the data allows, and makes the rest due
 /// (`applyContinuousPricingPolicy`): the curves' batches, then a batch of what is due, each in a
-/// transaction of its own as Node's are.
+/// transaction of its own, so the curves' batches stay queued when the due batch fails.
 pub async fn apply_policy(
     req: Req,
     State(db): State<Database>,

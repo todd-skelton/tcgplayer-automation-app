@@ -15,10 +15,7 @@ use super::{
 };
 use crate::{
     database::Database,
-    features::{
-        batch_pricing::market::TcgPlayerMarket, continuous_pricing,
-        inventory_economics::ledger::fingerprint::js_float,
-    },
+    features::{batch_pricing::market::TcgPlayerMarket, continuous_pricing},
     layout::Layout,
     tcgplayer::TcgPlayer,
     text::Msg,
@@ -54,15 +51,16 @@ async fn page(req: &Req, screen: &Screen) -> HtmlResult {
     })
 }
 
-/// The turnaround form as it is sent: for the seller the screen showed.
+/// The turnaround form as it is sent: for the seller the screen showed. Its inputs are disabled,
+/// so not sent, while no seller is configured.
 #[derive(Clone, Debug, Default, Fields)]
 pub struct TurnaroundInput {
     #[serde(default)]
     pub seller_key: String,
     #[serde(default)]
-    pub mode: String,
+    pub mode: Option<turnaround::Mode>,
     #[serde(default)]
-    pub manual_turnaround_days: String,
+    pub manual_turnaround_days: Entry<f64>,
 }
 
 impl TurnaroundInput {
@@ -70,8 +68,8 @@ impl TurnaroundInput {
         let setting = &selection.setting;
         TurnaroundInput {
             seller_key: seller_key.to_owned(),
-            mode: setting.mode.as_str().to_owned(),
-            manual_turnaround_days: js_float(setting.manual_turnaround_days),
+            mode: Some(setting.mode),
+            manual_turnaround_days: setting.manual_turnaround_days.into(),
         }
     }
 
@@ -79,12 +77,12 @@ impl TurnaroundInput {
     pub fn read(&self) -> Result<Change, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mode = turnaround::Mode::parse(&self.mode).unwrap_or_else(|| {
+        let mode = self.mode.unwrap_or_else(|| {
             errors.add(f.mode, "Choose observed or manual.");
             turnaround::Mode::Observed
         });
-        let days = match self.manual_turnaround_days.trim().parse::<f64>() {
-            Ok(d) if (0.0..=MAXIMUM_MANUAL_DAYS).contains(&d) => d,
+        let days = match self.manual_turnaround_days.value() {
+            Some(d) if (0.0..=MAXIMUM_MANUAL_DAYS).contains(&d) => d,
             _ => {
                 errors.add(
                     f.manual_turnaround_days,
@@ -206,8 +204,7 @@ pub async fn queue_analysis(
 }
 
 /// The latest analysis while it runs, read again by the screen; once it ends, the whole screen
-/// as it is with its results, as the React screen revalidated (its slow parts sent again by its
-/// streams).
+/// as it is with its results (its slow parts sent again by their streams).
 pub async fn analysis(
     req: Req,
     State(db): State<Database>,
@@ -251,17 +248,19 @@ async fn refused(req: &Req, db: &Database, view: &View, why: String) -> HtmlResu
 mod tests {
     use super::*;
 
-    fn input(mode: &str, days: &str) -> TurnaroundInput {
+    fn input(mode: Option<turnaround::Mode>, days: &str) -> TurnaroundInput {
         TurnaroundInput {
             seller_key: "s".into(),
-            mode: mode.into(),
-            manual_turnaround_days: days.into(),
+            mode,
+            manual_turnaround_days: Entry::typed(days),
         }
     }
 
     #[test]
     fn the_form_reads_as_a_change_for_the_seller() {
-        let change = input("manual", "21.5").read().unwrap();
+        let change = input(Some(turnaround::Mode::Manual), "21.5")
+            .read()
+            .unwrap();
         assert_eq!(
             (
                 change.mode,
@@ -270,6 +269,15 @@ mod tests {
             ),
             (turnaround::Mode::Manual, 21.5, None)
         );
+    }
+
+    #[test]
+    fn a_missing_source_and_days_that_do_not_read_are_named() {
+        let f = TurnaroundInput::FIELDS;
+        let errors = input(None, "abc").read().unwrap_err();
+        assert_eq!(errors.get(f.mode), Some("Choose observed or manual."));
+        let days = format!("Enter a number of days from 0 to {MAXIMUM_MANUAL_DAYS}.");
+        assert_eq!(errors.get(f.manual_turnaround_days), Some(days.as_str()));
     }
 
     #[test]
@@ -396,11 +404,14 @@ mod tests {
     }
 
     #[test]
-    fn days_out_of_range_or_an_unknown_mode_are_refused() {
+    fn days_out_of_range_or_no_mode_are_refused() {
         let f = TurnaroundInput::FIELDS;
-        let errors = input("weekly", "3651").read().unwrap_err();
+        let errors = input(None, "3651").read().unwrap_err();
         assert!(errors.has(f.mode) && errors.has(f.manual_turnaround_days));
-        assert!(input("observed", "-1").read().is_err());
-        assert!(input("observed", "0").read().is_ok());
+        let observed = Some(turnaround::Mode::Observed);
+        assert!(input(observed, "-1").read().is_err());
+        assert!(input(observed, "0").read().is_ok());
+        // A word the radios never send is no form of this page's.
+        assert!(corten::form::from_bytes::<TurnaroundInput>(b"mode=weekly").is_err());
     }
 }

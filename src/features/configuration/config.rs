@@ -444,8 +444,7 @@ pub fn normalized(pricing: &Value, supply: &Value, product_lines: &Value) -> Val
     })
 }
 
-/// The stored configuration; the defaults when there is none yet (the Node app writes them on
-/// its first read, and so does the first save here).
+/// The stored configuration; the defaults when there is none yet (the first save writes them).
 pub async fn load(db: &Database) -> sqlx::Result<Config> {
     let row: Option<(Value, Value, Value)> = sqlx::query_as(
         "SELECT pricing_json, supply_analysis_json, product_line_pricing_json
@@ -549,8 +548,8 @@ pub async fn remove_line(db: &Database, id: i32) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Every setting back to its default, as the React app's reset wrote them: the whole documents,
-/// keys this screen does not show included.
+/// Every setting back to its default: the whole documents, keys this screen does not show
+/// included.
 pub async fn reset(db: &Database) -> sqlx::Result<()> {
     let d = Config::default();
     let mut pricing = d.pricing.document();

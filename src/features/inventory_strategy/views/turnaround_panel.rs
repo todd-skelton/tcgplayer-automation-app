@@ -182,8 +182,8 @@ pub fn TurnaroundForm<'a>(
                             <input
                                 type="radio"
                                 name={f.mode}
-                                value="observed"
-                                checked={input.mode == "observed"}
+                                value={Mode::Observed}
+                                checked={input.mode == Some(Mode::Observed)}
                                 disabled={off}
                             >
                         </SegmentedRadio>
@@ -191,8 +191,8 @@ pub fn TurnaroundForm<'a>(
                             <input
                                 type="radio"
                                 name={f.mode}
-                                value="manual"
-                                checked={input.mode == "manual"}
+                                value={Mode::Manual}
+                                checked={input.mode == Some(Mode::Manual)}
                                 disabled={off}
                             >
                         </SegmentedRadio>

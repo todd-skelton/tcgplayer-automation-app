@@ -98,8 +98,8 @@ pub fn ShipmentEditorForm<'a>(
     }
 }
 
-/// Where a shipment goes, in the form `e` is of. Nothing in it is checked: the React screens sent
-/// it as typed.
+/// Where a shipment goes, in the form `e` is of. Nothing in it is checked: it is kept as typed,
+/// trimmed.
 #[component(css = ShipmentEditor)]
 pub fn AddressFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) -> impl Render {
     let f = ShipmentInput::FIELDS;
@@ -172,8 +172,8 @@ pub fn PackageFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) 
 #[component(css = ShipmentEditor)]
 fn Measure<'a, I: Id>(
     label: &'a str,
-    name: FieldName<String>,
-    value: &'a str,
+    name: FieldName<Entry<f64>>,
+    value: &'a Entry<f64>,
     e: &'a Within<'a, I>,
 ) -> impl Render {
     html! {

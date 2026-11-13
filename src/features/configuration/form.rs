@@ -1,5 +1,6 @@
 //! Each section's form as the browser sends it. A section saves on every change; a value that
-//! does not read keeps what was stored and is named, and the rest of the section is saved.
+//! does not read keeps what was stored and is named, and the rest of the section is saved. A
+//! number is an `Entry`, so a refused one is drawn again as it was typed.
 use corten::prelude::*;
 
 use super::config::{
@@ -7,7 +8,7 @@ use super::config::{
     SHIPPING_THRESHOLDS, Snaps, Supply,
 };
 
-/// The policy select's words, as the React app stores them.
+/// The policy select's words, as the stored configuration spells them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Method {
@@ -16,18 +17,18 @@ pub enum Method {
     ProfitPerDay,
 }
 
-/// Reads a number field: `Some` when it is a number `ok` accepts, otherwise its message is added
-/// and the stored value stays.
+/// Reads a number field: the number when it reads and `ok` accepts it, otherwise its message is
+/// added and the stored value stays.
 fn number(
     errors: &mut Errors,
-    field: FieldName<String>,
-    text: &str,
+    field: FieldName<Entry<f64>>,
+    entry: &Entry<f64>,
     stored: f64,
     ok: impl Fn(f64) -> bool,
     rule: &str,
 ) -> f64 {
-    match text.trim().parse::<f64>() {
-        Ok(n) if n.is_finite() && ok(n) => n,
+    match entry.value() {
+        Some(n) if ok(n) => n,
         _ => {
             errors.add(field, rule.to_owned());
             stored
@@ -42,19 +43,19 @@ fn percent(n: f64) -> bool {
 #[derive(Clone, Debug, Fields)]
 pub struct PricingInput {
     pub policy: Method,
-    pub horizon_days: String,
-    pub daily_return_hurdle: String,
-    pub relative_overhead: String,
-    pub static_overhead_per_unit: String,
-    pub default_percentile: String,
-    pub min_percentile: String,
-    pub max_percentile: String,
-    pub percentile_step: String,
+    pub horizon_days: Entry<f64>,
+    pub daily_return_hurdle: Entry<f64>,
+    pub relative_overhead: Entry<f64>,
+    pub static_overhead_per_unit: Entry<f64>,
+    pub default_percentile: Entry<f64>,
+    pub min_percentile: Entry<f64>,
+    pub max_percentile: Entry<f64>,
+    pub percentile_step: Entry<f64>,
     pub skip_prefix: String,
-    pub min_price_multiplier: String,
-    pub min_price_constant: String,
-    pub success_rate_low: String,
-    pub success_rate_high: String,
+    pub min_price_multiplier: Entry<f64>,
+    pub min_price_constant: Entry<f64>,
+    pub success_rate_low: Entry<f64>,
+    pub success_rate_high: Entry<f64>,
 }
 
 impl PricingInput {
@@ -66,19 +67,19 @@ impl PricingInput {
         };
         PricingInput {
             policy,
-            horizon_days: horizon.to_string(),
-            daily_return_hurdle: p.profit_per_day.daily_return_hurdle.to_string(),
-            relative_overhead: p.profit_per_day.relative_overhead.to_string(),
-            static_overhead_per_unit: p.profit_per_day.static_overhead_per_unit.to_string(),
-            default_percentile: p.default_percentile.to_string(),
-            min_percentile: p.min_percentile.to_string(),
-            max_percentile: p.max_percentile.to_string(),
-            percentile_step: p.percentile_step.to_string(),
+            horizon_days: horizon.into(),
+            daily_return_hurdle: p.profit_per_day.daily_return_hurdle.into(),
+            relative_overhead: p.profit_per_day.relative_overhead.into(),
+            static_overhead_per_unit: p.profit_per_day.static_overhead_per_unit.into(),
+            default_percentile: p.default_percentile.into(),
+            min_percentile: p.min_percentile.into(),
+            max_percentile: p.max_percentile.into(),
+            percentile_step: p.percentile_step.into(),
             skip_prefix: p.skip_prefix.clone(),
-            min_price_multiplier: p.min_price_multiplier.to_string(),
-            min_price_constant: p.min_price_constant.to_string(),
-            success_rate_low: p.success_rate_low.to_string(),
-            success_rate_high: p.success_rate_high.to_string(),
+            min_price_multiplier: p.min_price_multiplier.into(),
+            min_price_constant: p.min_price_constant.into(),
+            success_rate_low: p.success_rate_low.into(),
+            success_rate_high: p.success_rate_high.into(),
         }
     }
 
@@ -209,7 +210,7 @@ pub struct SnapsInput {
     pub enabled: bool,
     #[serde(default)]
     pub thresholds: Vec<u32>,
-    pub snap_range: String,
+    pub snap_range: Entry<f64>,
     pub evidence_window_days: u32,
 }
 
@@ -218,7 +219,7 @@ impl SnapsInput {
         SnapsInput {
             enabled: s.enabled,
             thresholds: s.thresholds.clone(),
-            snap_range: s.snap_range.to_string(),
+            snap_range: s.snap_range.into(),
             evidence_window_days: s.evidence_window_days,
         }
     }
@@ -279,7 +280,7 @@ impl SupplyInput {
 
 #[derive(Clone, Debug, Default, Fields)]
 pub struct DefaultPercentileInput {
-    pub default_percentile: String,
+    pub default_percentile: Entry<f64>,
 }
 
 impl DefaultPercentileInput {
@@ -303,9 +304,10 @@ impl DefaultPercentileInput {
 pub struct AddLineInput {
     pub product_line: Option<i32>,
     #[serde(default)]
-    pub percentile: String,
+    pub percentile: Entry<f64>,
+    /// Blank when the line uses the default hurdle.
     #[serde(default)]
-    pub daily_return_hurdle: String,
+    pub daily_return_hurdle: Entry<f64>,
     #[serde(default)]
     pub skip: bool,
 }
@@ -345,17 +347,16 @@ impl AddLineInput {
                 percent,
                 "Enter a percentile from 0 to 100.",
             );
-            let daily_return_hurdle = match self.daily_return_hurdle.trim() {
-                "" => None,
-                text => Some(number(
+            let daily_return_hurdle = (!self.daily_return_hurdle.is_blank()).then(|| {
+                number(
                     &mut e,
                     f.daily_return_hurdle,
-                    text,
+                    &self.daily_return_hurdle,
                     0.0,
                     ProfitPerDay::hurdle_is_valid,
                     "Enter a fraction above 0 and below 1, or leave it blank.",
-                )),
-            };
+                )
+            });
             LineSetting {
                 percentile,
                 skip: false,
@@ -385,7 +386,7 @@ mod tests {
     fn a_value_that_does_not_read_keeps_the_stored_one_and_the_rest_save() {
         let stored = Pricing::default();
         let input = PricingInput {
-            daily_return_hurdle: "2".into(),
+            daily_return_hurdle: Entry::typed("2"),
             skip_prefix: "Z-".into(),
             ..PricingInput::of(&stored)
         };
@@ -400,7 +401,7 @@ mod tests {
     fn a_skipped_line_keeps_no_hurdle() {
         let input = AddLineInput {
             product_line: Some(3),
-            daily_return_hurdle: "0.01".into(),
+            daily_return_hurdle: Entry::typed("0.01"),
             skip: true,
             ..Default::default()
         };
@@ -415,9 +416,49 @@ mod tests {
     fn a_line_already_configured_is_refused() {
         let input = AddLineInput {
             product_line: Some(3),
-            percentile: "70".into(),
+            percentile: Entry::typed("70"),
             ..Default::default()
         };
         assert!(input.read(65.0, |id| id != 3).is_err());
+    }
+
+    #[test]
+    fn a_number_that_does_not_read_is_named_and_drawn_again_as_typed() {
+        let stored = Pricing::default();
+        let input = PricingInput {
+            percentile_step: Entry::typed("abc"),
+            min_percentile: Entry::typed(" 12.5 "),
+            ..PricingInput::of(&stored)
+        };
+        let (read, errors) = input.read(&stored);
+        let f = PricingInput::FIELDS;
+        assert_eq!(read.percentile_step, stored.percentile_step);
+        assert_eq!(read.min_percentile, 12.5);
+        assert_eq!(
+            errors.get(f.percentile_step),
+            Some("Enter a step from 1 to 20.")
+        );
+        assert_eq!(input.percentile_step.text(), Some("abc"));
+    }
+
+    #[test]
+    fn a_blank_hurdle_uses_the_default_and_a_bad_one_is_named() {
+        let blank = AddLineInput {
+            product_line: Some(3),
+            percentile: Entry::typed("70"),
+            daily_return_hurdle: Entry::typed(" "),
+            ..Default::default()
+        };
+        let (_, setting) = blank.clone().read(65.0, |_| true).unwrap();
+        assert_eq!(setting.daily_return_hurdle, None);
+        let bad = AddLineInput {
+            daily_return_hurdle: Entry::typed("1.5"),
+            ..blank
+        };
+        let errors = bad.read(65.0, |_| true).unwrap_err();
+        assert_eq!(
+            errors.get(AddLineInput::FIELDS.daily_return_hurdle),
+            Some("Enter a fraction above 0 and below 1, or leave it blank.")
+        );
     }
 }

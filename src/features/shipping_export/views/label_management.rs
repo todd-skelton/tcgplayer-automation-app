@@ -271,6 +271,15 @@ impl FieldValue {
     }
 }
 
+/// What a number input shows for `entry`: the text as sent, else the number.
+fn shown(entry: &Entry<f64>) -> String {
+    match (entry.text(), entry.value()) {
+        (Some(text), _) => text.to_owned(),
+        (None, Some(value)) => value.to_string(),
+        (None, None) => String::new(),
+    }
+}
+
 impl LabelFormFill {
     /// The package each service gives `found`'s order, the fields a redraw sets for it: every
     /// package field but the service, which the select already shows.
@@ -286,10 +295,10 @@ impl LabelFormFill {
                 ServicePackage {
                     service: service.to_string(),
                     fields: vec![
-                        FieldValue::of(f.length, p.length),
-                        FieldValue::of(f.width, p.width),
-                        FieldValue::of(f.height, p.height),
-                        FieldValue::of(f.weight, p.weight),
+                        FieldValue::of(f.length, shown(&p.length)),
+                        FieldValue::of(f.width, shown(&p.width)),
+                        FieldValue::of(f.height, shown(&p.height)),
+                        FieldValue::of(f.weight, shown(&p.weight)),
                         FieldValue::of(f.label_format, p.label_format),
                         FieldValue::of(f.label_size, p.label_size),
                     ],
@@ -467,10 +476,10 @@ mod tests {
             pair(&f.zip, &input.zip),
             pair(&f.reference, &input.reference),
             pair(&f.service, &input.service),
-            pair(&f.length, &input.length),
-            pair(&f.width, &input.width),
-            pair(&f.height, &input.height),
-            pair(&f.weight, &input.weight),
+            pair(&f.length, &shown(&input.length)),
+            pair(&f.width, &shown(&input.width)),
+            pair(&f.height, &shown(&input.height)),
+            pair(&f.weight, &shown(&input.weight)),
             pair(&f.label_format, &input.label_format),
             pair(&f.label_size, &input.label_size),
         ]
@@ -520,8 +529,8 @@ mod tests {
             assert_eq!(fill.service, ShipmentInput::FIELDS.service.to_string());
             let mut edited = ShipmentInput::of(&found.shipment);
             edited.street2 = "Apt 4".into();
-            edited.length = "99".into();
-            edited.weight = "99".into();
+            edited.length = Entry::typed("99");
+            edited.weight = Entry::typed("99");
             edited.label_format = LabelFormat::Png;
             edited.label_size = LabelSize::SixByFour;
             for service in Service::ALL {
@@ -545,15 +554,15 @@ mod tests {
         let letter = filled(&stored, &fill, Service::First);
         assert_eq!(
             (
-                letter.length.as_str(),
-                letter.width.as_str(),
-                letter.height.as_str()
+                letter.length.text(),
+                letter.width.text(),
+                letter.height.text()
             ),
-            ("9", "4", "0.25")
+            (Some("9"), Some("4"), Some("0.25"))
         );
         assert_eq!(letter.label_size, config.letter.label_size);
         let mut edited = letter.clone();
-        edited.weight = "5".into();
+        edited.weight = Entry::typed("5");
         let parcel = filled(&edited, &fill, Service::Priority);
         assert_eq!(
             sent(&parcel)[8..],

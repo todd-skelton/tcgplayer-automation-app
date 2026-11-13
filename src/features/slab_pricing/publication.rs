@@ -3,6 +3,7 @@
 //! here, and it, its conflicts, its runs and their steps are read here. Neither contacts eBay:
 //! seller OAuth and live readback are not connected, so nothing publishes.
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+use corten::UrlValue;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::{Connection, PgConnection};
@@ -84,7 +85,7 @@ pub struct PlanOverride {
 }
 
 impl Plan {
-    /// Its review time is over (Node's `preview-expired` conflict says the same when read).
+    /// Its review time is over, which its `preview-expired` conflict also says once it is read.
     pub fn expired(&self, now: DateTime<Utc>) -> bool {
         self.expires_at
             .parse::<DateTime<Utc>>()
@@ -134,7 +135,7 @@ pub struct Review {
     pub steps: Option<(String, Vec<Step>)>,
 }
 
-/// The most publications listed, as the React panel showed.
+/// The most publications the panel lists.
 const MOST_RUNS: i64 = 5;
 
 /// The publication policy previews are prepared under (`SLAB_PUBLICATION_POLICY`).
@@ -310,6 +311,14 @@ async fn preview(
     Ok(read.map(|(preview, _)| preview))
 }
 
+/// Which ask a preview prices the listing at, as the select and the saved preview spell it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
+#[serde(rename_all = "lowercase")]
+pub enum Selection {
+    Calculated,
+    Reviewed,
+}
+
 /// What the operator asked to preview (`PreviewRequest`): the listing and recommendation at the
 /// revisions shown, and which ask, under an intent id that coalesces a post sent again.
 #[derive(Clone, Debug, Serialize)]
@@ -325,7 +334,7 @@ pub struct Asked {
     pub override_reviewed_at: Option<String>,
 }
 
-/// A preview refused, in Node's words.
+/// Why a preview is refused.
 const REQUEST: &str = "Select a saved recommendation and the current listing revision.";
 const USED: &str = "This preview intent was already used for a different selection.";
 const UNAVAILABLE: &str = "Unable to access the price-change preview.";
@@ -408,7 +417,8 @@ fn checked(asked: &Asked) -> Result<Asked, String> {
     })
 }
 
-/// Whether a saved request asked for exactly this (Node compares each key with `===`).
+/// Whether a saved request asked for exactly this: each of this request's keys has the same JSON
+/// value in the saved one.
 fn asked_the_same(saved: &Value, asked: &Asked) -> bool {
     let Ok(Value::Object(ours)) = serde_json::to_value(asked) else {
         return false;

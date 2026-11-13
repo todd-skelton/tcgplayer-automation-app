@@ -1,8 +1,9 @@
 //! Reviewing the saved comps of one evidence revision: each sale screened against the identity
 //! researched, with the operator's decision on it, ported from `loadCompReview`, and saving a
 //! decision (`saveCompDecision`). Fetching a sale's details or an eBay source's next page queues a
-//! provider call for Node's worker (`refreshes`).
+//! provider call for the slab evidence worker (`refreshes`).
 use chrono::{DateTime, SecondsFormat, Utc};
+use corten::UrlValue;
 use serde::Deserialize;
 use serde_json::Value;
 use sqlx::PgConnection;
@@ -21,8 +22,8 @@ use crate::{
 /// Sales on a page of the review.
 const PAGE: usize = 50;
 
-/// A column the review's sales can be sorted by. As the React grid did, a sort orders the page
-/// shown, not the whole revision.
+/// A column the review's sales can be sorted by. A sort orders the page shown, not the whole
+/// revision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum CompColumn {
@@ -153,7 +154,7 @@ impl Review {
         )
     }
 
-    /// What the revision covers, as the React review summed it up.
+    /// What the revision covers, in one line.
     pub fn summary(&self) -> String {
         let Some(c) = &self.coverage else {
             return "Saved sale detail".into();
@@ -171,7 +172,7 @@ impl Review {
     }
 }
 
-/// `USD 12.30`, `Unknown currency 12.30`, or "Unknown", as the React review wrote a price.
+/// A price as the review shows it: `USD 12.30`, `Unknown currency 12.30`, or "Unknown".
 pub fn money(value: Option<&Money>) -> String {
     value.map_or_else(
         || "Unknown".into(),
@@ -394,6 +395,14 @@ pub async fn read(
     .await
 }
 
+/// Whether a sale counts among the comps, as the review's select and the saved decision spell it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
+#[serde(rename_all = "lowercase")]
+pub enum Verdict {
+    Accept,
+    Exclude,
+}
+
 /// A person's decision on one sale of a revision, at the identity revision the review showed.
 pub struct Decided<'a> {
     pub slab_id: &'a str,
@@ -403,13 +412,14 @@ pub struct Decided<'a> {
     pub provider_id: &'a str,
     /// None when the sale's date is unknown.
     pub date: Option<&'a str>,
-    pub decision: &'a str,
+    pub decision: Verdict,
     pub note: &'a str,
     /// The sale's price as the person reviewed it: a positive amount and a three-letter currency.
     pub item_price: Option<Money>,
 }
 
-/// Why a decision was not saved, as Node's `CompReviewError` and the rest told it apart.
+/// Why a decision was not saved: a request that names no sale or reason, a review read before the
+/// identity changed, or a failed save.
 #[derive(Debug, PartialEq)]
 pub enum NotDecided {
     /// The request does not name a sale the revision holds, or a decision and a reason for it.
@@ -457,7 +467,6 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
             .provider_id
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'-')
-        || !matches!(d.decision, "accept" | "exclude")
         || note.is_empty()
         || d.note.encode_utf16().count() > 1000
         || d.date.is_some_and(|date| !day(date))
@@ -534,7 +543,7 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
         provider_id: d.provider_id.to_owned(),
         date: d.date.map(str::to_owned),
         valuation_group_key: group.clone(),
-        decision: d.decision.to_owned(),
+        decision: d.decision.to_string(),
         note: note.to_owned(),
         item_price: d.item_price.clone(),
     };
@@ -636,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn a_sale_reads_as_the_react_review_wrote_it() {
+    fn a_sale_reads_as_the_review_shows_it() {
         let page = page_of(0, 1, 1);
         let sale = &page.rows[0].sale;
         assert_eq!(sale.name(), "p");
