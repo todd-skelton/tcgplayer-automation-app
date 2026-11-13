@@ -24,8 +24,8 @@ pub struct Settings {
     pub batch_size: i64,
 }
 
-/// Each number's allowed values, as the Node app clamps them: the input's `min`, `max` and
-/// `step`, and the check of what is sent and stored.
+/// Each number's allowed values: the input's `min`, `max` and `step`, and the check of what is
+/// sent and stored.
 pub mod range {
     use corten::Bounds;
     pub const MINIMUM_INTERVAL: Bounds<i64> = Bounds::new(15, 30 * 24 * 60);

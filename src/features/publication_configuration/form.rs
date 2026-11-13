@@ -35,8 +35,8 @@ impl SettingsInput {
         }
     }
 
-    /// The settings the form says, or which number is out of its range. The React app saved an
-    /// out-of-range number as its default without saying so.
+    /// The settings the form says, or which number is out of its range: such a number is named,
+    /// not saved as its default.
     pub fn read(&self) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();

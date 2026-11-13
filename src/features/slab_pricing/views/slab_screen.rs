@@ -536,7 +536,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
     }
 }
 
-/// `USD 420.50`, as the React grid wrote an ask.
+/// A listing's ask as the grid shows it: `USD 420.50`.
 fn ask(listing: &Listing) -> String {
     format!(
         "{} {:.2}",

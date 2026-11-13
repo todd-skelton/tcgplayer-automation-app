@@ -2,8 +2,8 @@
 //! priced differently, shipping threshold snaps and supply analysis, which every pricing run reads.
 //! Ported from `app/features/pricing/routes/configuration.tsx`.
 //!
-//! Each section saves itself when a control in it changes, as the React screen did, and answers
-//! with itself. A browser without scripts gets a Save button per section.
+//! Each section saves itself when a control in it changes, and answers with itself. A browser
+//! without scripts gets a Save button per section.
 //!
 //! | Route | Answer |
 //! |---|---|

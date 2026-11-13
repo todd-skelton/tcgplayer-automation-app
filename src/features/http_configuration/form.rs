@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn a_zero_delay_stays_zero() {
-        // The React action read `Number(value) || 1500`, so saving turned 0 ms into 1500 ms.
+        // Zero is a delay of its own, not a blank to fill with the default.
         let config = HttpConfig::default();
         assert_eq!(config.limits(Domain::MpApi).request_delay_ms, 0);
         assert_eq!(

@@ -195,7 +195,7 @@ pub fn ScheduleForm<'a>(
     }
 }
 
-/// The work the Node app does on request, each allowed by the schedule as saved.
+/// The work run on request, each allowed by the schedule as saved.
 #[component(css = ContinuousScreen)]
 fn Actions<'a>(screen: &'a Screen) -> impl Render {
     let settings = &screen.settings;
