@@ -3,6 +3,7 @@
 //! the latest is saved here (`overrideSlabPrice`), and the latest is read with the research.
 use std::collections::BTreeSet;
 
+use corten::UrlValue;
 use serde::{Deserialize, Serialize};
 
 use crate::features::inventory_economics::ledger::fingerprint::js_float;
@@ -35,10 +36,24 @@ pub(super) const LATEST: &str = stored!(
 pub(super) const BY_ID: &str = stored!("WHERE r.id = $1::uuid");
 
 /// The comparable price basis, as the select and the policy write it.
-pub const BASES: [(&str, &str); 2] = [
-    ("item-plus-shipping", "Item + shipping"),
-    ("item-only", "Item only"),
-];
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
+#[serde(rename_all = "kebab-case")]
+pub enum PriceBasis {
+    ItemPlusShipping,
+    ItemOnly,
+}
+
+impl PriceBasis {
+    /// In the order the select lists them.
+    pub const ALL: [PriceBasis; 2] = [PriceBasis::ItemPlusShipping, PriceBasis::ItemOnly];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            PriceBasis::ItemPlusShipping => "Item + shipping",
+            PriceBasis::ItemOnly => "Item only",
+        }
+    }
+}
 
 /// A saved recommendation, whether it still matches its identity, decisions and evidence
 /// (`current`), and the ask the operator reviewed, if any.
@@ -102,8 +117,8 @@ pub struct Seller {
 impl Seller {
     /// `minimumSellerAsk`: the lowest item ask that keeps the seller's minimum ask and, when one
     /// is set, the minimum profit after acquisition, shipping and fees; `None` when that profit
-    /// cannot be worked out from what is known. Not a number when the costs make no sense, as
-    /// Node's `Math.max` gave.
+    /// cannot be worked out from what is known. Not a number when the costs make no sense, so a
+    /// preview checked against it is refused.
     pub fn lowest_ask(&self) -> Option<f64> {
         let floor = self.minimum_ask.unwrap_or(0.0);
         let Some(profit) = self.minimum_profit else {
@@ -215,9 +230,9 @@ pub struct Used {
 }
 
 impl Recommendation {
-    /// It needs calculating again: its identity, comp decisions or evidence changed (the Node
-    /// app's `current`), or newer evidence is saved than it read (`latest`, when the owned
-    /// grade is shown and could be calculated).
+    /// It needs calculating again: its identity, comp decisions or evidence changed (it is not
+    /// `current`), or newer evidence is saved than it read (`latest`, when the owned grade is
+    /// shown and could be calculated).
     pub fn stale(&self, latest: Option<&BTreeSet<String>>) -> bool {
         let read: BTreeSet<&str> = self
             .calculation
@@ -313,7 +328,8 @@ pub async fn review_ask(conn: &mut sqlx::PgConnection, o: &ReviewedAsk<'_>) -> R
          ON CONFLICT(recommendation_id) DO UPDATE SET item_price=EXCLUDED.item_price,currency=EXCLUDED.currency,note=EXCLUDED.note,reviewed_at=clock_timestamp()",
     )
     .bind(o.recommendation_id)
-    // The amount as JavaScript writes it, which is what Node's driver sends.
+    // Sent as the text JavaScript writes for the amount, the form existing overrides were saved
+    // from, so an amount saved again is stored the same.
     .bind(js_float(o.item_price))
     .bind(o.currency)
     .bind(note)

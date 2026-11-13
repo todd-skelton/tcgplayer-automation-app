@@ -7,13 +7,14 @@ use corten::{Refusal, SubmitKey, prelude::*};
 use serde_json::json;
 
 use super::{
-    calculation, comps,
+    calculation,
+    comps::{self, Verdict},
     dry_run::dry_run as run_dry,
     identity::{self, Card, Grading, Record, SlabIdentity},
     inventory, inventory_import, maintenance, outcomes,
     page::{Place, Screen, page},
-    publication,
-    recommendation::{self, Fees, Seller},
+    publication::{self, Selection},
+    recommendation::{self, Fees, PriceBasis, Seller},
     refreshes, screening,
     url::{self, Choice},
     valuation,
@@ -50,7 +51,7 @@ enum Resolving {
 
 /// Looks it up on a connection of its own while the browser waits: leaving the page cancels
 /// Alt's request, and the Alt connection's lease is released either way. A listing tied to an
-/// identity by hand resolves to none; a refusal is in the words of the Node route it replaces.
+/// identity by hand resolves to none; a refusal is the lookup's message for the operator.
 async fn resolve(
     req: &Req,
     db: &Database,
@@ -144,9 +145,9 @@ pub struct ConfirmInput {
     pub stamp: String,
     #[serde(default)]
     pub encoding: String,
-    /// A half-grade from 1 to 10, or empty when the grade maps to no number.
+    /// A half-grade from 1 to 10 the select offers, or none when the grade maps to no number.
     #[serde(default)]
-    pub number: String,
+    pub number: Option<f64>,
     #[serde(default)]
     pub label: String,
     #[serde(default)]
@@ -163,7 +164,8 @@ fn text(value: &str) -> Option<String> {
 }
 
 impl ConfirmInput {
-    /// The identity as the Node app reads it, keeping the provider asset the record matched.
+    /// The identity the form says, trimmed, with blank text unknown, keeping the provider asset
+    /// the record matched.
     fn identity(&self, grader: &str, kept: Option<&SlabIdentity>) -> SlabIdentity {
         let c = self;
         SlabIdentity {
@@ -181,7 +183,7 @@ impl ConfirmInput {
             grading: Grading {
                 grader: grader.to_owned(),
                 encoding: self.encoding.trim().to_owned(),
-                number: self.number.trim().parse().ok(),
+                number: self.number,
                 label: text(&self.label),
                 qualifier: text(&self.qualifier),
                 autograph: text(&self.autograph),
@@ -378,7 +380,7 @@ pub struct RefreshInput {
 }
 
 /// Queues the evidence for the chosen grade and dates for refresh, fetched again even when what
-/// is saved is fresh. Node's slab evidence worker calls the providers; the page follows it.
+/// is saved is fresh. The slab evidence worker calls the providers; the page shows its progress.
 pub async fn refresh(
     req: Req,
     State(db): State<Database>,
@@ -405,8 +407,8 @@ pub async fn refresh(
     }
 }
 
-/// A refresh to stop, by its run: one that has been run again since is left alone. Stopped here,
-/// in the refresh queue the Node app's worker claims from.
+/// A refresh to stop, by its run: one that has been run again since is left alone. Stopped in
+/// the refresh queue the slab evidence worker claims from.
 #[derive(Debug, Default, Fields)]
 pub struct CancelInput {
     pub key: String,
@@ -439,10 +441,9 @@ pub async fn cancel(
 }
 
 /// The seller's costs and the comparable price basis. A blank amount stays unknown.
-#[derive(Debug, Default, Fields)]
+#[derive(Debug, Fields)]
 pub struct CalculateInput {
-    #[serde(default)]
-    pub basis: String,
+    pub basis: PriceBasis,
     pub current_ask: Option<f64>,
     pub shipping_charged: Option<f64>,
     pub shipping_cost: Option<f64>,
@@ -452,18 +453,18 @@ pub struct CalculateInput {
     /// A percentage: 13.25 for 13.25%.
     pub fee_rate: Option<f64>,
     pub fee_fixed: Option<f64>,
-    #[serde(default)]
-    pub fee_basis: String,
+    pub fee_basis: PriceBasis,
 }
 
 impl CalculateInput {
-    /// The costs as the Node app reads them, or why they cannot be.
+    /// The seller's costs, the fee percentage as a fraction, or why they cannot be: a fee needs
+    /// both its percentage and its fixed amount.
     fn seller(&self) -> Result<Seller, String> {
         let fees = match (self.fee_rate, self.fee_fixed) {
             (Some(rate), Some(fixed)) => Some(Fees {
                 rate: rate / 100.0,
                 fixed,
-                basis: self.fee_basis.clone(),
+                basis: self.fee_basis.to_string(),
             }),
             (None, None) => None,
             _ => {
@@ -561,7 +562,7 @@ pub struct MaintenanceInput {
     pub revision: i64,
 }
 
-/// Saves the seller's maintenance settings. Once enabled, Node's slab evidence worker runs their
+/// Saves the seller's maintenance settings. Once enabled, the slab evidence worker runs their
 /// cycles; they never publish.
 pub async fn save_maintenance(
     req: Req,
@@ -569,8 +570,8 @@ pub async fn save_maintenance(
     Params(at): Params<url::SaveMaintenance>,
     Form(input): Form<MaintenanceInput>,
 ) -> HtmlResult {
-    // A number that does not read is below every range, so the save refuses it with the ranges,
-    // as Node refused one that was not an integer.
+    // A number that does not read is below every range, so the save refuses it with the ranges'
+    // message, as it refuses one out of range.
     let number = |entry: &Entry<i64>| entry.value().unwrap_or(-1);
     let settings = maintenance::Saved {
         seller: at.choice.seller.as_deref().unwrap_or(""),
@@ -638,7 +639,7 @@ pub async fn calculate(
             return refused(Place::Recommendation, &req, &db, &at.choice, why).await;
         }
     };
-    let policy = valuation::Policy::with_basis(&input.basis);
+    let policy = valuation::Policy::with_basis(input.basis.as_ref());
     let revisions: Vec<String> = revisions.into_iter().collect();
     let asked = calculation::Asked {
         slab_id: &record.id,
@@ -676,7 +677,8 @@ pub async fn review_ask(
 ) -> HtmlResult {
     let asked = recommendation::ReviewedAsk {
         recommendation_id: &input.recommendation,
-        // A price left empty is refused as Node refused a missing one.
+        // A price left empty is not a number, which the review refuses as it does any price that
+        // is not a positive amount.
         item_price: input.item_price.unwrap_or(f64::NAN),
         currency: "USD",
         note: &input.note,
@@ -701,8 +703,7 @@ pub struct PrepareInput {
     pub recommendation: String,
     #[serde(default)]
     pub reviewed_at: String,
-    #[serde(default)]
-    pub selection: String,
+    pub selection: Selection,
 }
 
 /// Saves a price-change preview of the listing reviewed: the selected ask with the listing and
@@ -724,8 +725,8 @@ pub async fn prepare(
         inventory_id: listing.id.clone(),
         inventory_revision: input.revision,
         recommendation_id: input.recommendation,
-        override_reviewed_at: (input.selection == "reviewed").then_some(input.reviewed_at),
-        selection: input.selection,
+        override_reviewed_at: (input.selection == Selection::Reviewed).then_some(input.reviewed_at),
+        selection: input.selection.to_string(),
     };
     let prepared = match db.0.acquire().await {
         Ok(mut conn) => publication::prepare(&mut conn, &asked, chrono::Utc::now()).await,
@@ -774,7 +775,7 @@ pub async fn dry_run(
 
 /// A sale's decision, as the comp review showed it: the revision and identity revision it was
 /// screened at, the sale's reference, and the operator's call.
-#[derive(Debug, Default, Fields)]
+#[derive(Debug, Fields)]
 pub struct CompDecisionInput {
     pub revision: String,
     pub identity_revision: i64,
@@ -783,8 +784,7 @@ pub struct CompDecisionInput {
     /// Empty when the sale's date is unknown.
     #[serde(default)]
     pub date: String,
-    /// `accept` or `exclude`.
-    pub decision: String,
+    pub decision: Verdict,
     /// An item amount verified from the sale; shipping and fees stay separate.
     pub item_price: Option<f64>,
     #[serde(default)]
@@ -814,7 +814,7 @@ pub async fn decide_comp(
         provider: &input.provider,
         provider_id: &input.provider_id,
         date: Some(date).filter(|d| !d.is_empty()),
-        decision: &input.decision,
+        decision: input.decision,
         note: &input.note,
         item_price: input.item_price.map(|amount| screening::Money {
             amount,
@@ -845,7 +845,7 @@ pub struct FetchCompsInput {
 }
 
 /// Queues a provider call for a sale's full details or an eBay source's next page, then shows
-/// its evidence beside the grade's own while the Node app's worker fetches it.
+/// its evidence beside the grade's own while the slab evidence worker fetches it.
 pub async fn fetch_comps(
     req: Req,
     State(db): State<Database>,
@@ -887,4 +887,54 @@ async fn refused(at: Place, req: &Req, db: &Database, choice: &Choice, why: Stri
         page(req, &screen).await
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use corten::form::from_bytes;
+
+    #[test]
+    fn the_selects_read_as_the_words_they_send() {
+        let costs: CalculateInput = from_bytes(
+            b"basis=item-only&fee_basis=item-plus-shipping&fee_rate=13.25&fee_fixed=0.3",
+        )
+        .unwrap();
+        assert_eq!(
+            (costs.basis, costs.fee_basis),
+            (PriceBasis::ItemOnly, PriceBasis::ItemPlusShipping)
+        );
+        let fees = costs.seller().unwrap().fees.unwrap();
+        assert_eq!(
+            (fees.basis.as_str(), fees.rate),
+            ("item-plus-shipping", 0.1325)
+        );
+        assert!(from_bytes::<CalculateInput>(b"basis=item&fee_basis=item-only").is_err());
+        let decided: CompDecisionInput = from_bytes(
+            b"revision=r&identity_revision=1&provider=alt&provider_id=x&decision=exclude",
+        )
+        .unwrap();
+        assert_eq!(decided.decision, Verdict::Exclude);
+        assert_eq!(decided.decision.to_string(), "exclude");
+    }
+
+    #[test]
+    fn a_fee_needs_both_its_parts() {
+        let costs: CalculateInput =
+            from_bytes(b"basis=item-only&fee_basis=item-only&fee_rate=13.25").unwrap();
+        assert_eq!(
+            costs.seller().unwrap_err(),
+            "Provide both fee percentage and fixed fee, or leave both unknown."
+        );
+    }
+
+    #[test]
+    fn an_unmapped_grade_has_no_number() {
+        let unmapped: ConfirmInput = from_bytes(b"revision=1&number=&encoding=AUTH").unwrap();
+        let identity = unmapped.identity("PSA", None);
+        assert_eq!(identity.grading.number, None);
+        assert_eq!(identity.grading.encoding, "AUTH");
+        let graded: ConfirmInput = from_bytes(b"revision=1&number=9.5").unwrap();
+        assert_eq!(graded.identity("PSA", None).grading.number, Some(9.5));
+    }
 }

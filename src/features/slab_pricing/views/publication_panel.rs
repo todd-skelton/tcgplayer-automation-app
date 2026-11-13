@@ -11,7 +11,7 @@ use crate::{
         identity::words,
         inventory::Listing,
         page::{Place, Screen},
-        publication::{Plan, Preview, Review, Run, Step},
+        publication::{Plan, Preview, Review, Run, Selection, Step},
         recommendation::{Recommendation, amount},
         url::{self, Choice},
         views::Problem,
@@ -132,11 +132,11 @@ fn PrepareForm<'a>(
             }
             <Field id={e.id(f.selection)} label="Price to review" hint="" error="">
                 <select class={Select {}} {..e.control(f.selection)}>
-                    <option value="calculated" selected={reviewed.is_none()}>
+                    <option value={Selection::Calculated} selected={reviewed.is_none()}>
                         "Calculated ask · "{calculated}
                     </option>
                     if let Some(reviewed) = reviewed {
-                        <option value="reviewed" selected>
+                        <option value={Selection::Reviewed} selected>
                             "Reviewed ask · "{amount(Some(reviewed.item_price))}
                         </option>
                     }
@@ -333,7 +333,7 @@ fn DryRun<'a>(
     }
 }
 
-/// A time the Node app wrote, when it reads as one.
+/// A saved time, when it reads as one.
 fn parsed(when: &str) -> Option<DateTime<Utc>> {
     when.parse().ok()
 }
