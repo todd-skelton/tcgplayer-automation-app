@@ -1,5 +1,5 @@
-// SubmitsOnChange (parts.rs): a form that is sent whenever a control in it changes, as the React
-// app saved a setting, read a report again or picked a batch, by submitting the control's form.
+// SubmitsOnChange (parts.rs): a form that is sent whenever a control in it changes, so a setting
+// is saved, a report read again or a batch picked by submitting the control's form.
 
 /**
  * @param {Event} event

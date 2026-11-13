@@ -35,7 +35,7 @@ impl Shared {
 }
 
 /// The home page, and the icon at the path a browser asks for when a document names none (a PDF
-/// or JSON opened in a tab), which the Node app served from `public/`. Handlers are named from
+/// or JSON opened in a tab), from `public/`. Handlers are named from
 /// this module, where the routes module is declared, not from inside it.
 #[corten::routes(state = Shared)]
 pub mod url {
@@ -138,7 +138,7 @@ pub fn app(shared: Shared) -> App {
         .components(dashboard::COMPONENTS)
         .messages::<Msg>()
         .error_page(layout::error_page, ())
-        // Dates are written in the visitor's zone, as the React screens' `toLocaleString`.
+        // Dates are written in the visitor's zone, as `toLocaleString` writes them in a browser.
         .zoned_dates()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
@@ -237,8 +237,8 @@ mod tests {
         let _ = app(shared).router();
     }
 
-    /// A failed page is drawn in the app's layout, as the React app's `ErrorBoundary` was in its
-    /// theme: here a path no screen claims. The database it is given is not there (the pool points
+    /// A failed page is drawn in the app's layout: here a path no screen claims. The database it
+    /// is given is not there (the pool points
     /// nowhere), so the app bar's read finds nothing to warn about.
     #[tokio::test]
     async fn a_failed_page_is_in_the_layout() {
@@ -291,8 +291,8 @@ mod tests {
         );
     }
 
-    /// What carries buyers' addresses or a provider's status is kept by nothing, as React's
-    /// `Cache-Control: no-store` said: the packing slips PDF and the slab connections page. A
+    /// What carries buyers' addresses or a provider's status is kept by nothing
+    /// (`Cache-Control: no-store`): the packing slips PDF and the slab connections page. A
     /// failure under it is not kept either, so the database need not answer.
     #[tokio::test]
     async fn private_answers_are_not_stored() {
@@ -320,7 +320,7 @@ mod tests {
 
     /// A page read from the dev database (`.env`), once with the browser's zone (`corten-zone`)
     /// and once without: its dates are the visitor's, else UTC and marked so. Reads only; the
-    /// router starts none of the app's tasks, and Node is not reached.
+    /// router starts none of the app's tasks.
     #[tokio::test]
     #[ignore = "reads the dev database"]
     async fn dates_are_written_in_the_visitors_zone() {

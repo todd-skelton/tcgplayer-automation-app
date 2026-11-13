@@ -1,5 +1,5 @@
 //! The document around every page: the app bar with the screens, the settings menu and the
-//! warning when TCGplayer's auth cookie is not set, as the React app's `root.tsx` draws them.
+//! warning when TCGplayer's auth cookie is not set.
 use std::future::Future;
 
 use corten::{LayoutRead, http::request::Parts, prelude::*};
@@ -148,7 +148,7 @@ const fn entry(
     }
 }
 
-/// The screens in the order the React app's `primaryNavigationItems` lists them.
+/// The screens, in the order the app bar lists them (`primaryNavigationItems`).
 pub const PRIMARY: [Entry; 10] = [
     entry(
         Screen::InventoryManager,
@@ -246,8 +246,7 @@ pub const SETTINGS: [Entry; 5] = [
     ),
 ];
 
-/// A link to a screen, marked when it is the page shown. A screen the React app serves loads in
-/// full (`data-reload`): the runtime cannot swap in a page another app rendered.
+/// A link to a screen, marked when it is the page shown.
 #[component]
 pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -> impl Render {
     html! {

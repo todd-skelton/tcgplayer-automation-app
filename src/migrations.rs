@@ -78,7 +78,7 @@ pub async fn apply(
 mod tests {
     use super::*;
 
-    /// Every file in `db/migrations` is built in, in the order the Node runner sorts them.
+    /// Every file in `db/migrations` is built in, sorted by name, the order they are applied in.
     #[test]
     fn every_migration_is_built_in_in_order() {
         let mut files: Vec<String> = std::fs::read_dir("db/migrations")
@@ -95,8 +95,8 @@ mod tests {
         }
     }
 
-    /// Every migration applied, as the Node runner applied them to the dev database, to an empty
-    /// schema first on the search path, in a transaction rolled back: the schema it builds is the
+    /// Every migration applied, as they were applied to the dev database, to an empty schema
+    /// first on the search path, in a transaction rolled back: the schema it builds is the
     /// dev database's (`public`), table by table, column by column, index by index, constraint by
     /// constraint and function by function, and a second run applies nothing.
     #[tokio::test]

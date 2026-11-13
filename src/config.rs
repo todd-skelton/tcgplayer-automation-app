@@ -2,7 +2,7 @@
 //! (`scripts/load-local-env.mjs`), so both see one configuration. A value already in the
 //! environment wins over the files.
 
-/// The mode, from `NODE_ENV` as the Node app reads it: `development` unless it says `production`.
+/// The mode, from `NODE_ENV`: `development` unless it says `production`.
 fn mode() -> &'static str {
     match std::env::var("NODE_ENV").as_deref() {
         Ok("production") => "production",
@@ -19,7 +19,7 @@ pub fn production() -> bool {
 pub const SELLER_PORTAL_WRITES: &str = "SELLER_PORTAL_WRITES_ENABLED";
 
 /// Whether this process may change the live store through Seller Portal: only when
-/// `SELLER_PORTAL_WRITES_ENABLED=true`, which production alone sets, as the Node app reads it.
+/// `SELLER_PORTAL_WRITES_ENABLED=true`, which production alone sets.
 pub fn seller_portal_writes() -> bool {
     std::env::var(SELLER_PORTAL_WRITES).is_ok_and(|value| value == "true")
 }
@@ -50,7 +50,7 @@ pub fn load_env() {
     }
 }
 
-/// The database the Node app uses: `DATABASE_URL`, or the standalone dev database.
+/// The database: `DATABASE_URL`, or the standalone dev database.
 pub fn database_url() -> String {
     std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         "postgresql://postgres:postgres@localhost:5433/tcgplayer_automation".into()

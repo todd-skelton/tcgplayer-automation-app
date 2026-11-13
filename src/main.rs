@@ -3,7 +3,7 @@
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let app = tcgplayer_automation::app();
-    // Before the first request, as the Node app migrates before it listens.
+    // Before the first request, so no request meets a schema behind the code.
     if tcgplayer_automation::migrations::on() {
         let url = tcgplayer_automation::database_url();
         if let Err(why) = tcgplayer_automation::migrations::migrate(&url).await {

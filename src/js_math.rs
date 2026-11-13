@@ -1,5 +1,5 @@
-//! `Math.exp` and `Math.log` as V8 computes them (fdlibm), so a figure the Node app derived
-//! reads back to the same bits here: a plan's snapshot hash is taken over such figures. The
+//! `Math.exp` and `Math.log` as V8 computes them (fdlibm), so a figure already stored reads back
+//! to the same bits here: a plan's snapshot hash is taken over such figures. The
 //! platform's own `exp` and `ln` differ from V8 in the last bit for about one value in ten
 //! and one in fifty.
 
@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn matches_v8_where_the_platform_differs() {
-        // V8's answers (Node 22) where the platform's `ln` and `exp` miss by one bit.
+        // V8's answers where the platform's `ln` and `exp` miss by one bit.
         assert_eq!(23.35705794991507f64.js_ln(), 3.1508992061035554);
         assert_eq!(175.63677958048925f64.js_ln(), 5.168418110183184);
         assert_eq!(2.5704042991579357f64.js_ln(), 0.9440632013818913);

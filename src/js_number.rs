@@ -1,6 +1,6 @@
 //! JavaScript's readings of text as a number (`Number`, `Number.parseFloat`,
-//! `Number.parseInt`) and its white space, so a field the Node app read from a CSV or a document
-//! reads the same here.
+//! `Number.parseInt`) and its white space, so a field in a CSV or a stored document reads as it
+//! did when it was first read and recorded.
 
 /// JavaScript's white space and line terminators (what `trim` removes): Unicode's white space
 /// less U+0085, and the byte order mark.
