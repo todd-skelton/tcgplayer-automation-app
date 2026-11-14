@@ -5,7 +5,11 @@
 //!
 //! The posts go through a [`Poster`], so the worker is tested against a stand-in; [`Live`]
 //! posts to `store.tcgplayer.com` with the saved auth cookie.
-use std::{future::Future, sync::LazyLock, time::Duration};
+use std::{
+    future::Future,
+    sync::LazyLock,
+    time::{Duration, Instant},
+};
 
 use regex::Regex;
 use serde_json::Value;
@@ -264,6 +268,7 @@ fn known_field_shape(value: Option<&Value>) -> String {
         "StagedPricingUploadId",
         "Success",
         "success",
+        "SuccessfulProductCount",
         "Error",
         "Errors",
         "error",
@@ -480,9 +485,12 @@ pub fn quoted_messages(messages: Option<&[Value]>) -> String {
     format!("Seller Portal messages: {shown}")
 }
 
-/// Why Seller Portal refused an upload of `rows` rows: the rows it still counted as accepted, if
-/// any, and its messages, so the failure keeps its reason.
-fn refused_upload(upload_id: i64, rows: usize, data: &Value) -> Failure {
+/// Why Seller Portal refused an upload of `rows` rows, answered `after` the post was sent: the
+/// rows it still counted as accepted, if any, and its messages, so the failure keeps its reason.
+/// With neither, what it answered (status, kind of content, which known fields) and how long it
+/// took are kept instead, since that is all there is to tell one refusal from another.
+fn refused_upload(upload_id: i64, rows: usize, answer: &Answer, after: Duration) -> Failure {
+    let data = &answer.data;
     let mut message = format!("TCGplayer did not accept staged pricing upload {upload_id}.");
     let accepted = data
         .get("SuccessfulProductCount")
@@ -498,6 +506,13 @@ fn refused_upload(upload_id: i64, rows: usize, data: &Value) -> Failure {
     );
     if !quoted.is_empty() {
         message = format!("{message} {quoted}");
+    }
+    if accepted.is_none() && quoted.is_empty() {
+        let shown = diagnostics(Some(data), Some(&metadata(answer)));
+        message = format!(
+            "{message} Seller Portal gave no reason ({shown}; answered after {} s).",
+            after.as_secs()
+        );
     }
     Failure::new(message)
 }
@@ -517,11 +532,14 @@ pub async fn upload(
     upload_id: i64,
     updates: &[Update],
 ) -> Result<Uploaded, Failure> {
+    let sent = Instant::now();
     let answer = portal
         .post(UPLOAD, &upload_form(file_name, upload_id, updates)?)
         .await?;
     if !truthy(answer.data.get("Success")) {
-        return Err(refused_upload(upload_id, updates.len(), &answer.data));
+        let refused = refused_upload(upload_id, updates.len(), &answer, sent.elapsed());
+        tracing::warn!(upload_id, rows = updates.len(), "{}", refused.message);
+        return Err(refused);
     }
     Ok(Uploaded {
         successful: answer.data.get("SuccessfulProductCount").cloned(),
@@ -653,7 +671,15 @@ mod tests {
     /// accepted; with neither, the message says only that the upload was not accepted.
     #[test]
     fn a_refused_upload_keeps_seller_portals_reason() {
-        let refused = |data: Value| refused_upload(19149437, 32, &data).message;
+        let answered = |data: Value| Answer {
+            status: 200,
+            content_type: Some("json".into()),
+            redirected: Some(false),
+            data,
+        };
+        let refused = |data: Value| {
+            refused_upload(19149437, 32, &answered(data), Duration::from_secs(61)).message
+        };
         assert_eq!(
             refused(serde_json::json!({
                 "Success": false,
@@ -669,17 +695,40 @@ mod tests {
             "TCGplayer did not accept staged pricing upload 19149437. Seller Portal messages: \
              Invalid upload."
         );
+    }
+
+    /// A refusal with no reason keeps what Seller Portal answered and how long it took.
+    #[test]
+    fn a_refused_upload_without_a_reason_keeps_the_answer_and_its_time() {
+        let refused = |answer: Answer| {
+            refused_upload(7006, 9, &answer, Duration::from_millis(61_400)).message
+        };
         assert_eq!(
-            refused(serde_json::json!({
-                "Success": false,
-                "SuccessfulProductCount": 0,
-                "Messages": [],
-            })),
-            "TCGplayer did not accept staged pricing upload 19149437."
+            refused(Answer {
+                status: 200,
+                content_type: Some("json".into()),
+                redirected: Some(false),
+                data: serde_json::json!({
+                    "Success": false,
+                    "SuccessfulProductCount": 0,
+                    "Messages": [],
+                }),
+            }),
+            "TCGplayer did not accept staged pricing upload 7006. Seller Portal gave no reason \
+             (status=200; contentType=json; redirected=false; response=object; \
+             fields=Success:boolean,SuccessfulProductCount:number,Messages:array; answered after 61 s)."
         );
-        assert_eq!(
-            refused(Value::String("<html>Sign in</html>".into())),
-            "TCGplayer did not accept staged pricing upload 19149437."
+        assert!(
+            refused(Answer {
+                status: 302,
+                content_type: Some("html".into()),
+                redirected: Some(true),
+                data: Value::String("<html>Sign in</html>".into()),
+            })
+            .starts_with(
+                "TCGplayer did not accept staged pricing upload 7006. Seller Portal gave no \
+                 reason (status=302; contentType=html; redirected=true; response=html;"
+            )
         );
     }
 

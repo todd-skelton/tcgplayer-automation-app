@@ -3395,7 +3395,7 @@
      "config": {},
      "progress": null,
      "errorCode": "staged_publication_rolled_back",
-     "errorMessage": "TCGplayer did not accept staged pricing upload 7006.",
+     "errorMessage": "TCGplayer did not accept staged pricing upload 7006. Seller Portal gave no reason (status=200; contentType=json; redirected=false; response=object; fields=Success:boolean,SuccessfulProductCount:number,Messages:array; answered after 0 s).",
      "attempts": 1,
      "claimedBy": null,
      "leased": false,
@@ -3422,7 +3422,7 @@
      "reasons": [],
      "status": "failed",
      "errorCode": "staged_publication_rolled_back",
-     "errorMessage": "TCGplayer did not accept staged pricing upload 7006.",
+     "errorMessage": "TCGplayer did not accept staged pricing upload 7006. Seller Portal gave no reason (status=200; contentType=json; redirected=false; response=object; fields=Success:boolean,SuccessfulProductCount:number,Messages:array; answered after 0 s).",
      "published": false,
      "provenance": "unknown"
     },
@@ -3441,7 +3441,7 @@
      "reasons": [],
      "status": "failed",
      "errorCode": "staged_publication_rolled_back",
-     "errorMessage": "TCGplayer did not accept staged pricing upload 7006.",
+     "errorMessage": "TCGplayer did not accept staged pricing upload 7006. Seller Portal gave no reason (status=200; contentType=json; redirected=false; response=object; fields=Success:boolean,SuccessfulProductCount:number,Messages:array; answered after 0 s).",
      "published": false,
      "provenance": "unknown"
     }
