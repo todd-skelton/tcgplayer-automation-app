@@ -83,7 +83,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "itoa",
- "matchit",
+ "matchit 0.8.4",
  "memchr",
  "mime",
  "percent-encoding",
@@ -283,12 +283,12 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten-macros"
 version = "0.2.0"
-source = "git+https://github.com/corten-run/corten?rev=9c867b5e#9c867b5e715a768883b08a39b893b496d0acd3f2"
+source = "git+https://github.com/corten-run/corten?rev=8f11b7b3#8f11b7b35f343c9c489fa5a296330d08bd8da529"
 
 [[package]]
 name = "corten-run"
 version = "0.2.0"
-source = "git+https://github.com/corten-run/corten?rev=9c867b5e#9c867b5e715a768883b08a39b893b496d0acd3f2"
+source = "git+https://github.com/corten-run/corten?rev=8f11b7b3#8f11b7b35f343c9c489fa5a296330d08bd8da529"
 dependencies = [
  "brotli",
  "bytes",
@@ -302,7 +302,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "jiff",
- "matchit",
+ "matchit 0.9.2",
  "memchr",
  "percent-encoding",
  "pin-project-lite",
@@ -320,7 +320,7 @@ dependencies = [
 [[package]]
 name = "corten-ui"
 version = "0.2.0"
-source = "git+https://github.com/corten-run/corten?rev=9c867b5e#9c867b5e715a768883b08a39b893b496d0acd3f2"
+source = "git+https://github.com/corten-run/corten?rev=8f11b7b3#8f11b7b35f343c9c489fa5a296330d08bd8da529"
 dependencies = [
  "corten-run",
 ]
@@ -506,7 +506,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1161,6 +1161,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
+name = "matchit"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8863b587001c1b9a8a4e36008cebc6b3612cb1226fe2de94858e06092687b608"
+
+[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1492,7 +1498,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
