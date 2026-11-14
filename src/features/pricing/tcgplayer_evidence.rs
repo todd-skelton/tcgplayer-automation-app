@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use super::buyer_arrival_rate::LATEST_SALES_LIMIT;
 use super::ledger::{self, HistorySku};
 use super::policy::SupplyStatus;
-use super::quality_share::SellerQuality;
 use super::sale::Sale;
 use super::sku_price::{Competitors, Evidence, Failure, History, HistoryBucket, Sku};
 use super::supply_analysis::{self, Listing, Observation as Supply};
@@ -100,10 +99,7 @@ pub struct ListingsPage {
     pub results: Vec<ListedAsk>,
 }
 
-/// A listing as the search reports it, the fields supply analysis and the quality-aware win share
-/// read. The search's TypeScript type gave `quantity` and `sellerRating` as numbers, `sellerSales`
-/// as text and `verifiedSeller` as a flag; each is read loosely, so an odd value is left out rather
-/// than failing the read.
+/// A listing as the search reports it, the fields supply analysis reads.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ListedAsk {
@@ -115,54 +111,11 @@ pub struct ListedAsk {
     pub seller_shipping_price: f64,
     pub seller_id: String,
     pub seller_key: String,
-    #[serde(deserialize_with = "loose_number")]
-    pub quantity: Option<f64>,
-    /// Positive feedback, a percentage.
-    #[serde(deserialize_with = "loose_number")]
-    pub seller_rating: Option<f64>,
-    /// Sales completed, which the search writes as text.
-    #[serde(deserialize_with = "loose_number")]
-    pub seller_sales: Option<f64>,
-    #[serde(deserialize_with = "loose_flag")]
-    pub verified_seller: Option<bool>,
 }
 
 /// A JSON number read as JavaScript keeps it, whether written `7` or `7.0`; null is 0.
 fn whole_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     Ok(Option::<f64>::deserialize(d)?.map_or(0, |n| n as i64))
-}
-
-/// A field read loosely: a number, text, a flag, or anything else, which reads as none.
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum Loose {
-    Number(f64),
-    Text(String),
-    Flag(bool),
-    Other(serde::de::IgnoredAny),
-}
-
-/// A number, or text holding one (`"10000+"`, `"1,234"`); none for anything else.
-fn loose_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<f64>, D::Error> {
-    let number = match Loose::deserialize(d)? {
-        Loose::Number(n) => Some(n),
-        Loose::Text(text) => text
-            .trim()
-            .trim_end_matches('+')
-            .replace(',', "")
-            .parse()
-            .ok(),
-        Loose::Flag(_) | Loose::Other(_) => None,
-    };
-    Ok(number.filter(|n| n.is_finite()))
-}
-
-/// A flag; none for anything else.
-fn loose_flag<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<bool>, D::Error> {
-    Ok(match Loose::deserialize(d)? {
-        Loose::Flag(flag) => Some(flag),
-        Loose::Number(_) | Loose::Text(_) | Loose::Other(_) => None,
-    })
 }
 
 impl ListedAsk {
@@ -178,12 +131,6 @@ impl ListedAsk {
             seller_id: self.seller_id,
             seller_key: self.seller_key,
             listing_id: self.listing_id,
-            quantity: self.quantity,
-            seller_quality: SellerQuality {
-                rating: self.seller_rating,
-                sales: self.seller_sales,
-                verified: self.verified_seller,
-            },
         }
     }
 }
@@ -565,7 +512,6 @@ mod tests {
             seller_shipping_price: shipping,
             seller_id: String::new(),
             seller_key: seller.into(),
-            ..ListedAsk::default()
         }
     }
 
@@ -635,41 +581,6 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(ask.listing_id, 794_686_978);
-    }
-
-    #[test]
-    fn a_sellers_quality_reads_loosely_and_may_be_absent() {
-        let read = |json| {
-            serde_json::from_value::<ListedAsk>(json)
-                .unwrap()
-                .into_listing()
-        };
-        let reported = read(serde_json::json!({
-            "listingId": 1, "condition": "Near Mint", "price": 1.0, "sellerShippingPrice": 0.0,
-            "sellerId": "s", "sellerKey": "k", "quantity": 3, "sellerRating": 99.8,
-            "sellerSales": "10000+", "verifiedSeller": true, "goldSeller": false
-        }));
-        assert_eq!(reported.quantity, Some(3.0));
-        assert_eq!(
-            reported.seller_quality,
-            SellerQuality {
-                rating: Some(99.8),
-                sales: Some(10_000.0),
-                verified: Some(true),
-            }
-        );
-        assert_eq!(
-            read(serde_json::json!({"sellerSales": "1,234"}))
-                .seller_quality
-                .sales,
-            Some(1234.0)
-        );
-        let odd = read(serde_json::json!({
-            "listingId": 2, "price": 1.0, "quantity": null, "sellerRating": "n/a",
-            "sellerSales": "many", "verifiedSeller": "yes"
-        }));
-        assert_eq!((odd.listing_id, odd.quantity), (2, None));
-        assert_eq!(odd.seller_quality, SellerQuality::default());
     }
 
     #[tokio::test]

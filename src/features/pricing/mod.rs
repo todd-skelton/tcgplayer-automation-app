@@ -21,7 +21,6 @@ pub mod maximize;
 mod parity;
 pub mod policy;
 pub mod product_line_pools;
-pub mod quality_share;
 pub mod resolver;
 pub mod sale;
 pub mod shipping_threshold_snap;
