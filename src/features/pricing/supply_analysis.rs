@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 
 use super::condition_normalization::{self, Multipliers};
 use super::policy::SupplyStatus;
-use super::quality_share::SellerQuality;
 
 const SEALED: &str = "Unopened";
 
@@ -20,9 +19,6 @@ pub struct Listing {
     pub seller_id: String,
     pub seller_key: String,
     pub listing_id: i64,
-    /// Copies on offer; none when the search leaves it out.
-    pub quantity: Option<f64>,
-    pub seller_quality: SellerQuality,
 }
 
 impl Listing {
@@ -179,7 +175,6 @@ mod tests {
             seller_id: seller.into(),
             seller_key: format!("seller-{seller}"),
             listing_id: id,
-            ..Listing::default()
         }
     }
 

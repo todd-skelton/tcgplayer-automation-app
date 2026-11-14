@@ -55,7 +55,6 @@ pub struct ListedPrice {
     pub condition_rate_median_sell_days: Option<f64>,
     pub shrunk_rate_median_sell_days: Option<f64>,
     pub shrunk_condition_rate_median_sell_days: Option<f64>,
-    pub quality_share_median_sell_days: Option<f64>,
 }
 
 /// A sell-time forecast a price can be published with.
@@ -69,19 +68,15 @@ pub enum Forecast {
     /// The curve's buyer arrival shrunk toward its product line's pooled rate.
     ShrunkRate,
     ShrunkConditionRate,
-    /// The store's share of buyers once every competing ask is weighed by price, copies and seller
-    /// quality.
-    QualityShare,
 }
 
 impl Forecast {
-    pub const ALL: [Forecast; 6] = [
+    pub const ALL: [Forecast; 5] = [
         Forecast::Curve,
         Forecast::BuyerChoice,
         Forecast::ConditionRate,
         Forecast::ShrunkRate,
         Forecast::ShrunkConditionRate,
-        Forecast::QualityShare,
     ];
 
     /// Its median days to sell at the price, when it was published with one.
@@ -92,7 +87,6 @@ impl Forecast {
             Forecast::ConditionRate => price.condition_rate_median_sell_days,
             Forecast::ShrunkRate => price.shrunk_rate_median_sell_days,
             Forecast::ShrunkConditionRate => price.shrunk_condition_rate_median_sell_days,
-            Forecast::QualityShare => price.quality_share_median_sell_days,
         }
         .filter(|days| days.is_finite() && *days > 0.0)
     }
@@ -460,7 +454,6 @@ mod tests {
             condition_rate_median_sell_days: None,
             shrunk_rate_median_sell_days: None,
             shrunk_condition_rate_median_sell_days: None,
-            quality_share_median_sell_days: None,
         };
         // One copy went before listing; two orders after it sell the rest.
         let sales = [
@@ -515,7 +508,6 @@ mod tests {
             condition_rate_median_sell_days: Some(7.0),
             shrunk_rate_median_sell_days: shrunk,
             shrunk_condition_rate_median_sell_days: None,
-            quality_share_median_sell_days: None,
         }
     }
 
@@ -577,44 +569,6 @@ mod tests {
         assert_eq!(
             (none.horizons[0].listings, none.horizons[0].brier_score),
             (0.0, None)
-        );
-    }
-
-    #[test]
-    fn the_quality_aware_share_is_graded_beside_the_curve_on_its_own_prices() {
-        // One price carries the quality-aware share and sells on day 3; one carries none and never
-        // sells.
-        let carried = ListedPrice {
-            quality_share_median_sell_days: Some(7.0),
-            ..listed(1, None)
-        };
-        let report = learn(&Evidence {
-            seller_key: "s",
-            prices: &[carried, listed(2, None)],
-            sales: &[sale(3 * DAY_MS, 1)],
-            from: 0,
-            through: 28 * DAY_MS,
-            learned_at: 28 * DAY_MS,
-            evidence_window_days: 28,
-        });
-        assert_eq!(report.grades.len(), 6);
-        let grade = report.grades.last().unwrap();
-        assert_eq!(grade.forecast, Forecast::QualityShare);
-        assert_eq!(grade.time_in_stock.listings, 1.0);
-        assert_eq!(grade.time_in_stock.sales, 1.0);
-        // Sold on day 3: in stock three days, at ln 2 / 7 sales a day.
-        assert!(
-            (grade.time_in_stock.forecast_sales - 3.0 * std::f64::consts::LN_2 / 7.0).abs() < 1e-12
-        );
-        // A median of 7 days gives three chances in four of a sale within 14; the curve's 14, one in
-        // two.
-        let fourteen = grade.horizons[0];
-        assert_eq!((fourteen.horizon_days, fourteen.listings), (14, 1.0));
-        assert!((fourteen.brier_score.unwrap() - 0.0625).abs() < 1e-12);
-        assert!((fourteen.curve_brier_score.unwrap() - 0.25).abs() < 1e-12);
-        assert_eq!(
-            serde_json::to_value(grade.forecast).unwrap(),
-            serde_json::json!("qualityShare")
         );
     }
 
