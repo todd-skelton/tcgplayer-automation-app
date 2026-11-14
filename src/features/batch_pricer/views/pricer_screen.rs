@@ -1,6 +1,7 @@
 use corten::prelude::*;
 
 use super::batch_panel::{BatchFollow, BatchProblem};
+use super::publication_repair::Refused;
 use crate::{
     features::batch_pricer::{
         batches::Batch,
@@ -27,8 +28,9 @@ pub struct CsvFormId;
 #[derive(Id)]
 pub struct SellerFormId;
 
-/// The screen: a new batch from a CSV export or a seller, the batch picker, and the batch picked.
-/// What a post did shows in the layout's toaster; why one was refused, above the batch.
+/// The screen: a new batch from a CSV export or a seller, the batch picker, the batch picked and
+/// its ambiguous publication items. What a post did shows in the layout's toaster; why one was
+/// refused, above the batch, or in the form it refused (`refused` for an ambiguous item's).
 #[component(css)]
 pub fn PricerScreen<'a>(
     list: &'a [Batch],
@@ -36,6 +38,7 @@ pub fn PricerScreen<'a>(
     shown: Option<Result<&'a Shown, &'a str>>,
     seller: &'a str,
     errors: &'a Errors,
+    refused: Option<Refused<'a>>,
     problem: Option<&'a str>,
     t: Msg,
 ) -> impl Render {
@@ -105,7 +108,7 @@ pub fn PricerScreen<'a>(
                 <Notice variant={AlertVariant::Warning}>"Failed to load batch: "{message}</Notice>
             }
             Some(Ok(shown)) => {
-                <BatchFollow shown={shown} t={t} />
+                <BatchFollow shown={shown} refused={refused} t={t} />
             }
         }
     }

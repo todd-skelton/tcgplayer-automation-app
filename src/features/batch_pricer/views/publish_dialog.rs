@@ -230,6 +230,7 @@ mod tests {
                 items,
             }),
             publications: Vec::new(),
+            ambiguous: Vec::new(),
         };
         let html = PublishDialog {
             batch: 9,

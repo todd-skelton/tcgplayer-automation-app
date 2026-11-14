@@ -18,6 +18,7 @@ use crate::{
         batch_pricing::queue,
         continuous_pricing::scheduler,
         inventory_publication::{
+            confirmation::{self, Ambiguous},
             plan::{self, Configuration},
             preview,
         },
@@ -369,11 +370,14 @@ impl Preview {
     }
 }
 
-/// A batch's publications, newest first, and what publishing it now would send.
+/// A batch's publications, newest first, what publishing it now would send, and its items left
+/// ambiguous, for the operator to confirm.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Publications {
     pub preview: Option<Preview>,
     pub publications: Vec<Publication>,
+    #[serde(skip)]
+    pub ambiguous: Vec<Ambiguous>,
 }
 
 /// How the latest publication run went.
@@ -668,6 +672,7 @@ pub async fn publications(db: &Database, batch: i32) -> Result<Publications, Str
             status,
         })
         .collect();
+    let ambiguous = confirmation::ambiguous(&mut conn, batch).await.map_err(e)?;
     let preview = if found.job_status.as_deref() == Some("completed") {
         let policy = Configuration::load(&mut conn).await.map_err(e)?.policy;
         let known = preview::known(&mut conn, batch, &items, &results, None)
@@ -681,6 +686,7 @@ pub async fn publications(db: &Database, batch: i32) -> Result<Publications, Str
     Ok(Publications {
         preview,
         publications,
+        ambiguous,
     })
 }
 
@@ -850,6 +856,7 @@ mod tests {
                 items,
             }),
             publications: Vec::new(),
+            ambiguous: Vec::new(),
         }
     }
 
@@ -901,6 +908,7 @@ mod tests {
                 publication(2, Some(9), "published", &["published"]),
                 publication(1, Some(8), "failed", &["failed"]),
             ],
+            ambiguous: Vec::new(),
         };
         let run = p.latest_run().unwrap();
         assert_eq!(
