@@ -28,7 +28,7 @@
 //! | `POST /shipping-export/shipments/{reference}/packed` | the shipment marked packed (and the next not packed shown), or not |
 //! | `POST /shipping-export/ship` | the orders with production postage marked shipped on TCGplayer, then their buyers told |
 //! | `GET /shipping-export/order-labels` | label management: the order `?order=` and the labels bought for it |
-//! | `POST /shipping-export/order-labels/{order}/form` | the order's label form drawn again for the labels and service chosen |
+//! | `POST /shipping-export/order-labels?order=` | the order's label form drawn again for the labels and service chosen, without JavaScript |
 //! | `POST /shipping-export/order-labels/{order}` | an outbound label, a return label or both bought for the order |
 //! | `POST /shipping-export/new-batch` | the batch dropped |
 mod buying;
@@ -147,14 +147,9 @@ pub mod url {
     pub struct ShipOrders;
 
     /// `order` is the order looked up; none shows only the lookup.
-    #[route("/shipping-export/order-labels", get = show_labels)]
+    #[route("/shipping-export/order-labels", get = show_labels, post = redraw_labels)]
     pub struct OrderLabels {
         pub order: Option<String>,
-    }
-
-    #[route("/shipping-export/order-labels/{order}/form", post = redraw_labels)]
-    pub struct OrderLabelsForm {
-        pub order: String,
     }
 
     #[route("/shipping-export/order-labels/{order}", post = buy_labels)]

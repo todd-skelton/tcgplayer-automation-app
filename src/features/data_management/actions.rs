@@ -8,6 +8,7 @@ use super::{
         source::TcgPlayerCatalog,
     },
     jobs::{self, Job, Line, LineInput, ProductInput, Ran, SetInput},
+    url,
     views::{DataScreen, JobCard},
 };
 use crate::{database::Database, layout::Layout, tcgplayer::TcgPlayer};
@@ -69,7 +70,9 @@ fn page(req: &Req, screen: &Screen) -> HtmlResult {
         .give::<crate::layout::AuthCookieMissing>(screen.auth_cookie_missing))
 }
 
-/// Runs `job` as its form asks, or answers what the form is missing.
+/// Runs `job` as its form asks, or answers what the form is missing. Done, with JavaScript the
+/// job's card says what it did; without, the screen does, as a notice, so the browser is not left
+/// at the job's address, which only posts.
 async fn run(
     req: &Req,
     db: &Database,
@@ -99,14 +102,14 @@ async fn run(
     let answer = maintenance::run(&mut conn, &catalog, &request).await;
     match answer.outcome {
         Ok(message) => {
-            screen.ran = Some(Ran::Done(message));
-            if req.mode == Mode::Action {
-                return req.patch(JobCard {
-                    screen: &screen,
-                    job,
-                });
+            if req.mode != Mode::Action {
+                return req.redirect_with_notice(&url::DataManagement, message);
             }
-            page(req, &screen)
+            screen.ran = Some(Ran::Done(message));
+            req.patch(JobCard {
+                screen: &screen,
+                job,
+            })
         }
         Err(message) => {
             // A job TCGplayer or the database failed is a 502; one refused, the input's.
