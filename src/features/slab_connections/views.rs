@@ -22,7 +22,7 @@ pub enum Outcome {
 }
 
 impl Outcome {
-    fn message(self) -> &'static str {
+    pub fn message(self) -> &'static str {
         match self {
             Outcome::Saved => Status::Unchecked.message(),
             Outcome::Removed => "Connection removed.",

@@ -401,7 +401,7 @@ pub fn LabelForm<'a>(
             <p class={muted()}>"Return labels use the same package with the addresses swapped."</p>
             <button
                 class={(Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }, Apply)}
-                formaction={url::OrderLabelsForm { order: order.clone() }}
+                formaction={url::OrderLabels { order: Some(order.clone()) }}
             >
                 "Apply Choice and Service"
             </button>

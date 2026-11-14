@@ -95,7 +95,7 @@ pub async fn remove(
     answer(&req, &db, at.provider, Outcome::Removed).await
 }
 
-/// The provider's card, saying what was done; without scripts, the page with it.
+/// The provider's card, saying what was done; without scripts, the screen with it as a notice.
 async fn answer(req: &Req, db: &Database, provider: Provider, outcome: Outcome) -> HtmlResult {
     let connections = store::connections(&db.0).await?;
     let errors = Errors::new();
@@ -109,8 +109,10 @@ async fn answer(req: &Req, db: &Database, provider: Provider, outcome: Outcome) 
         connection: of(&connections, provider),
         answered: Some(&answered),
     };
-    req.patch_or(card, || screen(req, &connections, Some(&answered)))
-        .await
+    req.patch_or(card, || async {
+        req.redirect_with_notice(&url::SlabConnections, outcome.message())
+    })
+    .await
 }
 
 fn of(connections: &[Connection], provider: Provider) -> &Connection {

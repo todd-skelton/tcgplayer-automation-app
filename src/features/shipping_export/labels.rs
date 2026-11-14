@@ -7,7 +7,7 @@
 //! #363).
 use std::future::Future;
 
-use corten::{Refusal, form::from_bytes, http::Bytes, prelude::*};
+use corten::{Mode, Refusal, form::from_bytes, http::Bytes, prelude::*};
 
 use super::{
     buying::cannot_buy,
@@ -197,7 +197,7 @@ struct Draft<'a> {
     errors: &'a Errors,
 }
 
-#[allow(clippy::too_many_arguments)]
+/// The screen with the order `number` looked up on TCGplayer.
 async fn labels_page(
     req: &Req,
     db: &Database,
@@ -212,6 +212,20 @@ async fn labels_page(
         Some(n) => Some(look_up(db, &config, n).await?),
         None => None,
     };
+    labels_drawn(req, db, &config, number, found, problem, draft).await
+}
+
+/// The screen with `found`, the order as it was read for `number`, or why it could not be.
+#[allow(clippy::too_many_arguments)]
+async fn labels_drawn(
+    req: &Req,
+    db: &Database,
+    config: &ShippingConfig,
+    number: Option<&str>,
+    found: Option<Result<Found, (Refusal, String)>>,
+    problem: Option<&str>,
+    draft: Option<Draft<'_>>,
+) -> HtmlResult {
     let lookup_problem = found
         .as_ref()
         .and_then(|f| f.as_ref().err().map(|(_, why)| why.clone()));
@@ -221,7 +235,7 @@ async fn labels_page(
     let found = found.as_ref();
     let t: Msg = req.t();
     let mode = EasyPostMode::of_deployment();
-    let seller = seller(db, &config).await?;
+    let seller = seller(db, config).await?;
     let stored = found.map(|f| ShipmentInput::of(&f.shipment));
     let no_errors = Errors::new();
     let form = found.map(|f| {
@@ -244,7 +258,7 @@ async fn labels_page(
                 if let Some((found, input, buy, errors)) = form {
                     <LabelForm
                         found={found}
-                        config={&config}
+                        config={config}
                         input={input}
                         buy={buy}
                         mode={mode}
@@ -267,15 +281,17 @@ pub async fn show_labels(
 /// The form drawn again for what was chosen, as its script draws it without a request: a new
 /// service redraws the package for it (a letter, weighed for the order, when it is First),
 /// keeping the address as edited. It is drawn from the batch in progress's copy of the order when
-/// it has one ([`kept_or`]), so only a page without JavaScript posts here and TCGplayer is read
-/// only for an order not in the batch.
+/// it has one ([`kept_or`]), so TCGplayer is read only for an order not in the batch. Only a page
+/// without JavaScript posts here, to the screen's own address, and is answered with the screen.
 pub async fn redraw_labels(
     req: Req,
     State(db): State<Database>,
-    Params(at): Params<url::OrderLabelsForm>,
+    Params(at): Params<url::OrderLabels>,
     body: Bytes,
 ) -> HtmlResult {
-    let number = at.order;
+    let Some(number) = at.order.filter(|n| !n.trim().is_empty()) else {
+        return labels_page(&req, &db, None, None, None).await;
+    };
     let (Ok(input), Ok(choice)) = (
         from_bytes::<ShipmentInput>(&body),
         from_bytes::<Choice>(&body),
@@ -301,6 +317,24 @@ pub async fn redraw_labels(
         ShipmentInput::of(&moved.with_service(input.service, &config, Some(&found.order)))
     };
     let errors = Errors::new();
+    if req.mode != Mode::Action {
+        let draft = Draft {
+            input: &input,
+            buy: choice.buy,
+            errors: &errors,
+        };
+        let number = Some(number.as_str());
+        return labels_drawn(
+            &req,
+            &db,
+            &config,
+            number,
+            Some(Ok(found)),
+            None,
+            Some(draft),
+        )
+        .await;
+    }
     req.patch(LabelForm {
         found: &found,
         config: &config,
