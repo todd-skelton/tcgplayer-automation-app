@@ -9,7 +9,7 @@ use corten::{Mode, Refusal, i18n::Zone, prelude::*};
 use corten_ui::Toast;
 
 use super::{
-    page::{Drawn, Shown, page, success_rates, unavailable},
+    page::{Drawn, Shown, answer, page, success_rates, unavailable},
     url,
     views::{BatchFollow, BatchProblem, ConfirmForm, Refused},
 };
@@ -133,7 +133,7 @@ fn said(confirmed: &Confirmed) -> String {
 
 /// The item confirmed live and the batch drawn again: with JavaScript its panel (its ambiguous
 /// items with it) and a toast; without, the page with the notice. A refusal is the item's form
-/// with why.
+/// with why, or, once the item has no form, why above the batch.
 pub async fn confirm_live(
     req: Req,
     State(db): State<Database>,
@@ -147,6 +147,11 @@ pub async fn confirm_live(
             Ok(confirmed) => return confirmed_live(&req, &db, at.batch, &confirmed).await,
             Err(NotConfirmed::Database(error)) => return Err(error.into()),
             Err(not) => {
+                if earliest(&db, at.batch, input.item).await?.is_none() {
+                    // Its form is gone, confirmed meanwhile or never ambiguous: why goes above
+                    // the batch, as any refused post on it does.
+                    return answer(&req, &db, at.batch, Err(not.message())).await;
+                }
                 let mut errors = Errors::new();
                 match not {
                     NotConfirmed::OtherQuantity(_) => errors.add(f.quantity, not.message()),

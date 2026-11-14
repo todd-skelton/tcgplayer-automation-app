@@ -187,7 +187,12 @@ pub(super) async fn page(
 /// What a post on a batch did. With JavaScript, the batch's panel as it is now (following it
 /// when it prices or publishes) and the message in a toast, or why it was refused; without, the
 /// page, or the page with why.
-async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, String>) -> HtmlResult {
+pub(super) async fn answer(
+    req: &Req,
+    db: &Database,
+    batch: i32,
+    done: Result<String, String>,
+) -> HtmlResult {
     let t: Msg = req.t();
     let message = match done {
         Err(message) => {
