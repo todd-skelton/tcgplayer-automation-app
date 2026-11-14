@@ -452,11 +452,6 @@ impl Curve {
         &self.points
     }
 
-    /// The price at the curve's 50th percentile: its median sale price.
-    pub fn median_price(&self) -> Option<f64> {
-        self.at_percentile(50.0).map(|point| point.price)
-    }
-
     fn minimum_price(&self) -> f64 {
         self.by_price.first().map_or(f64::INFINITY, |p| p.price)
     }

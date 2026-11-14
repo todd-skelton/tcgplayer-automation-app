@@ -218,8 +218,6 @@ fn resolve(details: Option<&Value>, percentile: f64) -> Resolved {
         condition_sale_rate: field(details, "conditionRateForecast"),
         condition_normalization: field(details, "conditionNormalization"),
         price_evidence: field(details, "priceEvidence"),
-        // Saved details keep no listings, so the quality-aware share is not forecast again.
-        competing_asks: None,
         percentiles: Some(
             percentiles
                 .iter()

@@ -18,11 +18,9 @@ use super::policy::{
     self, Basis, Constrained, Constraint, Curve, CurvePoint, Decision, ForecastStatus, Method,
     PercentileDetail, Policy, PortfolioItem, PortfolioPlan, ProfitPerDay,
 };
-use super::quality_share::{self, Forecast as QualityShareForecast};
 use super::shrunk_sale_rate::{self, Exposure, Forecast as ShrunkRateForecast, Pools};
 pub use super::sku_price::Failure;
 use super::sku_price::Priced;
-use super::supply_analysis::Listing;
 use crate::features::{
     configuration::config::{Config as StoredConfig, Policy as StoredPolicy},
     inventory_economics::ledger::assumptions::{js_round, js_to_fixed},
@@ -185,8 +183,6 @@ pub struct Resolved {
     pub condition_sale_rate: Option<SaleRate>,
     pub condition_normalization: Option<Diagnostics>,
     pub price_evidence: Option<PriceEvidence>,
-    /// The asks the curve competed with, in the SKU's condition's terms, when they were observed.
-    pub competing_asks: Option<Vec<Listing>>,
 }
 
 /// Milliseconds as days, for a value JavaScript reads as truthy.
@@ -231,7 +227,6 @@ impl From<Priced> for Resolved {
             condition_sale_rate: priced.condition_sale_rate,
             condition_normalization: priced.condition_normalization,
             price_evidence: priced.price_evidence,
-            competing_asks: priced.competing_asks,
         }
     }
 }
@@ -284,9 +279,6 @@ pub struct PricedItem {
     /// Recorded to be graded beside the other forecasts; pricing does not read it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shrunk_rate_forecast: Option<ShrunkRateForecast>,
-    /// Recorded to be graded beside the other forecasts; pricing does not read it.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub quality_share_forecast: Option<QualityShareForecast>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub condition_normalization: Option<Diagnostics>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -833,15 +825,6 @@ pub async fn calculate(
                     result.condition_sale_rate.as_ref(),
                     decision.store_win_share,
                 );
-                item.quality_share_forecast = result.competing_asks.as_deref().and_then(|asks| {
-                    quality_share::forecast(
-                        &curve,
-                        decision.selected_price,
-                        decision.buyer_interval_days,
-                        asks,
-                        quality_share::CALIBRATION,
-                    )
-                });
                 shrinkable.push((
                     priced_items.len(),
                     shrunk_sale_rate::Evidence {
@@ -1573,58 +1556,6 @@ mod tests {
             forecast.condition_rate.as_ref().unwrap().pool_source,
             shrunk_sale_rate::PoolSource::Run
         );
-    }
-
-    #[tokio::test]
-    async fn a_quality_share_forecast_is_recorded_without_moving_the_price() {
-        let at = |percentile, price, interval| PercentileDetail {
-            historical_sales_velocity_days: Some(interval),
-            listings_count: Some(1.0),
-            store_win_share: Some(0.5),
-            supply_status: Some(SupplyStatus::Observed),
-            ..point(percentile, price)
-        };
-        let unobserved = curve(14.0, vec![at(5.0, 10.0, 10.0), at(65.0, 14.0, 30.0)]);
-        let ask = |price, quantity, rating| Listing {
-            condition: "Near Mint".into(),
-            price,
-            quantity,
-            seller_quality: quality_share::SellerQuality {
-                rating,
-                ..quality_share::SellerQuality::default()
-            },
-            ..Listing::default()
-        };
-        let asks = vec![ask(13.5, Some(2.0), Some(99.5)), ask(15.0, None, None)];
-        let observed = Resolved {
-            competing_asks: Some(asks.clone()),
-            ..unobserved.clone()
-        };
-        let without = run(&[sku(803, 1.0, 20.0)], &Config::default(), &[], unobserved).await;
-        let with = run(&[sku(803, 1.0, 20.0)], &Config::default(), &[], observed).await;
-        let (without, with) = (only(&without), only(&with));
-        // Pricing reads none of it.
-        assert_eq!(with.price, Some(14.0));
-        assert_eq!(
-            (with.price, &with.pricing_decision),
-            (without.price, &without.pricing_decision)
-        );
-        // Without observed asks there is nothing to weigh.
-        assert_eq!(without.quality_share_forecast, None);
-        let forecast = with.quality_share_forecast.as_ref().unwrap();
-        // The curve's median price sits three quarters of the way from its 5th to its 65th.
-        assert_eq!(forecast.reference_price, 13.0);
-        assert_eq!(forecast.competing_asks, 2);
-        let share =
-            quality_share::store_win_share(14.0, &asks, 13.0, &quality_share::CALIBRATION).unwrap();
-        assert_eq!(forecast.store_win_share, share);
-        assert_eq!(forecast.buyer_interval_days, 30.0);
-        assert!((forecast.median_sell_days - std::f64::consts::LN_2 * 30.0 / share).abs() < 1e-9);
-        let recorded = serde_json::to_value(with).unwrap();
-        let recorded = &recorded["qualityShareForecast"];
-        assert_eq!(recorded["calibration"], "quality-share-provisional-v1");
-        assert!(recorded["medianSellDays"].is_number());
-        assert_eq!(policy::MODEL_VERSION, "pooled-supply-v1");
     }
 
     #[tokio::test]
