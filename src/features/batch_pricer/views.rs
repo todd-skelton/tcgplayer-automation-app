@@ -4,17 +4,20 @@ use corten::Component;
 mod batch_panel;
 mod batch_summary;
 mod pricer_screen;
+mod publication_repair;
 mod publish_dialog;
 
 pub use batch_panel::{BatchFollow, BatchPanel, BatchProblem};
 pub use pricer_screen::{CsvForm, PricerScreen, SellerForm};
+pub use publication_repair::{ConfirmForm, PublicationRepair, Refused};
 
-/// `PricerScreen`, `BatchPanel` and `BatchSummary` hold their stylesheets, `PublishDialog` its
-/// stylesheet and script, and `PublishItem` is the view that script reads.
+/// `PricerScreen`, `BatchPanel`, `BatchSummary` and `PublicationRepair` hold their stylesheets,
+/// `PublishDialog` its stylesheet and script, and `PublishItem` is the view that script reads.
 pub const COMPONENTS: &[Component] = &[
     PricerScreen,
     BatchPanel,
     batch_summary::BatchSummary,
+    PublicationRepair,
     publish_dialog::PublishDialog,
     publish_dialog::PublishItem,
 ];

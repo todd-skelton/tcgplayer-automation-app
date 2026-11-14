@@ -42,11 +42,23 @@ than the identity of the remote session.
 
 If a worker lease expires after remote state may have changed, the publication
 and remaining items become ambiguous and are never sent remotely again. The
-repair that confirmed such an item from Seller Portal evidence was a JSON
-route (`PATCH /api/inventory-batches/{batchNumber}/publications`,
-`confirm-ambiguous-item`); it was retired with the rest of `/api`
-([Retiring the Node JSON routes](node-route-retirement.md)) and has no screen
-yet.
+Batch Pricer shows a batch's ambiguous items under its actions. Once the
+operator has seen an item's quantity go live in Seller Portal, its form takes
+the quantity seen, when it went live (in the operator's time zone) and a note
+of where; the confirmation posts to
+`POST /pending-inventory-pricer/batches/{batchNumber}/publications/confirm`.
+Only an item that adds received inventory, with receipt lots for the
+publication's seller, can be confirmed. The item, its lots and the publication
+change in one transaction: the item is published at that time, its lots go
+live for the seller with the note as their evidence, its SKU's FIFO replay is
+queued, and a publication whose items all have an outcome is published. A
+quantity other than the item's, a time before the publication was sent or a
+lot was received, or a confirmation that does not match the item is refused.
+The same confirmation again is answered as the first was; another time or note
+for an item already published is refused. This replaces the JSON route
+(`PATCH /api/inventory-batches/{batchNumber}/publications`,
+`confirm-ambiguous-item`) retired with the rest of `/api`
+([Retiring the Node JSON routes](node-route-retirement.md)).
 
 Run the publication receipt integration test only against a disposable database
 whose name starts with `tcgplayer_fifo_test_`:

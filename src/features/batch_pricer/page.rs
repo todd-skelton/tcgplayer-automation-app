@@ -12,7 +12,7 @@ use futures_util::stream;
 use super::{
     batches::{self, Batch, Mode as Pricing, Publications},
     import, url,
-    views::{BatchFollow, BatchPanel, BatchProblem, CsvForm, PricerScreen, SellerForm},
+    views::{BatchFollow, BatchPanel, BatchProblem, CsvForm, PricerScreen, Refused, SellerForm},
 };
 use crate::{
     database::Database,
@@ -63,7 +63,7 @@ pub struct SuccessRates {
     pub high: f64,
 }
 
-async fn success_rates(db: &Database) -> sqlx::Result<SuccessRates> {
+pub(super) async fn success_rates(db: &Database) -> sqlx::Result<SuccessRates> {
     let (low, high) = configuration::success_rate_thresholds(db).await?;
     Ok(SuccessRates { low, high })
 }
@@ -77,7 +77,11 @@ pub struct Shown {
 }
 
 impl Shown {
-    async fn read(db: &Database, batch: i32, rates: SuccessRates) -> Result<Shown, String> {
+    pub(super) async fn read(
+        db: &Database,
+        batch: i32,
+        rates: SuccessRates,
+    ) -> Result<Shown, String> {
         let (one, publications) =
             tokio::join!(batches::one(db, batch), batches::publications(db, batch));
         Ok(Shown {
@@ -102,16 +106,18 @@ impl Shown {
 }
 
 /// What a page is drawn with besides the batches: why the last post was refused, and a new
-/// batch's form as sent with its errors. What a post did is the layout's notice.
+/// batch's or an ambiguous item's form as sent with its errors. What a post did is the layout's
+/// notice.
 #[derive(Default)]
-struct Drawn<'a> {
-    problem: Option<&'a str>,
-    errors: Option<&'a Errors>,
-    seller: Option<&'a str>,
+pub(super) struct Drawn<'a> {
+    pub problem: Option<&'a str>,
+    pub errors: Option<&'a Errors>,
+    pub seller: Option<&'a str>,
+    pub refused: Option<Refused<'a>>,
 }
 
 /// The batches could not be listed or read: the screen has nothing to draw.
-fn unavailable(message: String) -> corten::Error {
+pub(super) fn unavailable(message: String) -> corten::Error {
     corten::Error::new(message).with_status(StatusCode::BAD_GATEWAY)
 }
 
@@ -133,7 +139,12 @@ async fn starting_seller(db: &Database) -> sqlx::Result<String> {
 }
 
 /// The screen with `chosen`, or the newest batch, shown.
-async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) -> HtmlResult {
+pub(super) async fn page(
+    req: &Req,
+    db: &Database,
+    chosen: Option<i32>,
+    drawn: &Drawn<'_>,
+) -> HtmlResult {
     let (list, seller, rates) =
         tokio::join!(batches::list(db), starting_seller(db), success_rates(db));
     let (list, rates) = (list.map_err(unavailable)?, rates?);
@@ -165,6 +176,7 @@ async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) 
                 shown={shown.as_ref().map(|s| s.as_ref().map_err(String::as_str))}
                 seller={&seller}
                 errors={drawn.errors.unwrap_or(&none)}
+                refused={drawn.refused}
                 problem={drawn.problem}
                 t={req.t()}
             />
@@ -175,7 +187,12 @@ async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) 
 /// What a post on a batch did. With JavaScript, the batch's panel as it is now (following it
 /// when it prices or publishes) and the message in a toast, or why it was refused; without, the
 /// page, or the page with why.
-async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, String>) -> HtmlResult {
+pub(super) async fn answer(
+    req: &Req,
+    db: &Database,
+    batch: i32,
+    done: Result<String, String>,
+) -> HtmlResult {
     let t: Msg = req.t();
     let message = match done {
         Err(message) => {
@@ -190,7 +207,7 @@ async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, Strin
                             .await
                             .map_err(unavailable)?;
                         patch.draw(html! {
-                            <BatchFollow shown={&shown} t={t} />
+                            <BatchFollow shown={&shown} refused={None} t={t} />
                             <BatchProblem message={Some(message)} />
                         })
                     },
@@ -212,7 +229,7 @@ async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, Strin
     let rates = success_rates(db).await?;
     let shown = Shown::read(db, batch, rates).await.map_err(unavailable)?;
     req.patch(html! {
-        <BatchFollow shown={&shown} t={t} />
+        <BatchFollow shown={&shown} refused={None} t={t} />
         <BatchProblem message={None} />
         <Toast message={Some(message.as_str())} failed={false} />
     })
@@ -429,7 +446,12 @@ pub async fn live(
     };
     corten::live(stream::unfold(follow, move |mut follow| async move {
         let (shown, version) = follow.next().await?;
-        let html = BatchPanel { shown: &shown, t }.to_html();
+        let html = BatchPanel {
+            shown: &shown,
+            refused: None,
+            t,
+        }
+        .to_html();
         Some((Fragment::new(html).cursor(version), follow))
     }))
 }

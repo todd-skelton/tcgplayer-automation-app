@@ -5,6 +5,7 @@ use corten_ui::{Tooltip, dialog};
 
 use super::{
     batch_summary::BatchSummary,
+    publication_repair::{PublicationRepair, Refused},
     publish_dialog::{PublishDialog, PublishDialogId},
 };
 use crate::{
@@ -59,8 +60,9 @@ pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
 
 /// The batch shown and, while it prices or publishes, the stream that sends its panel again each
 /// time it changes. A post's answer replaces it, so a batch that starts pricing is followed.
+/// `refused` is an ambiguous item's confirmation drawn again with why.
 #[component]
-pub fn BatchFollow<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
+pub fn BatchFollow<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) -> impl Patch {
     html! {
         <div id={BatchFollowId}>
             if shown.following() {
@@ -68,19 +70,20 @@ pub fn BatchFollow<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                     src={url::Live { batch: shown.batch.batch_number }}
                     since={shown.version()}
                 >
-                    <BatchPanel shown={shown} t={t} />
+                    <BatchPanel shown={shown} refused={refused} t={t} />
                 </corten-live>
             } else {
-                <BatchPanel shown={shown} t={t} />
+                <BatchPanel shown={shown} refused={refused} t={t} />
             }
         </div>
     }
 }
 
 /// Everything about the batch that changes as it prices or publishes: its card, the actions it
-/// allows now, its progress, its summary and the dialogs its actions open.
+/// allows now, its progress, the items its publications left ambiguous, its summary and the
+/// dialogs its actions open.
 #[component(css)]
-pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
+pub fn BatchPanel<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) -> impl Patch {
     let batch = &shown.batch;
     let n = batch.batch_number;
     let publications = shown.publications.as_ref().ok();
@@ -198,6 +201,7 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                     {job.error_message.clone().unwrap_or_else(|| format!("Batch {n} pricing failed"))}
                 </Notice>
             }
+            <PublicationRepair shown={shown} refused={refused} t={t} />
             if let Some(summary) = &batch.summary {
                 <p class={muted()}>"Current batch summary for the saved pricing results."</p>
                 <BatchSummary

@@ -1,5 +1,6 @@
 //! Batch Pricer: make a batch from a CSV export or a seller's live inventory, price it, follow
-//! its pricing as it runs, download its results, publish what is ready to Seller Portal, or delete
+//! its pricing as it runs, download its results, publish what is ready to Seller Portal, confirm
+//! an item Seller Portal left ambiguous once the operator has seen it live ([`repair`]), or delete
 //! it. Ported from `app/features/pending-inventory/routes/pending-inventory-pricer.tsx`.
 //!
 //! The batches are read, made from a CSV export or a seller's live inventory (read from
@@ -19,6 +20,7 @@
 //! | `GET /pending-inventory-pricer/batches/{batch}/live` | the batch's panel each time it changes, while it prices or publishes |
 //! | `GET /pending-inventory-pricer/batches/{batch}/results` | its successful or manual-review rows as CSV |
 //! | `POST /pending-inventory-pricer/batches/{batch}/publish` | the selected SKUs planned for publication |
+//! | `POST /pending-inventory-pricer/batches/{batch}/publications/confirm` | an ambiguous item confirmed live |
 //! | `POST /pending-inventory-pricer/batches/{batch}/delete` | the batch deleted |
 //!
 //! The seller key starts from the shipping settings' default seller, not one the browser
@@ -27,12 +29,14 @@
 mod batches;
 pub mod import;
 mod page;
+mod repair;
 mod views;
 
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
 use page::{delete, download, import_csv, import_seller, live, price, publish, show};
+use repair::confirm_live;
 
 #[corten::routes(area = BatchPricer, state = crate::app::Shared)]
 pub mod url {
@@ -69,6 +73,11 @@ pub mod url {
 
     #[route("/pending-inventory-pricer/batches/{batch}/publish", post = publish)]
     pub struct Publish {
+        pub batch: i32,
+    }
+
+    #[route("/pending-inventory-pricer/batches/{batch}/publications/confirm", post = confirm_live)]
+    pub struct ConfirmLive {
         pub batch: i32,
     }
 
