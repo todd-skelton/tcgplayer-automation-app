@@ -368,9 +368,10 @@ async fn same_plan(
                 set_name, product_name, condition, previous_price::float8 AS previous_price,
                 desired_price::float8 AS desired_price, quantity_delta, observed_quantity,
                 desired_absolute_quantity, priced_at, eligibility_reasons,
-                -- Evidence a later backfill matched from history is not part of the plan.
+                -- Evidence a later backfill matched from history is not part of the plan, nor is
+                -- the retired qualityShareForecast that items planned before its removal carry.
                 CASE WHEN forecast_evidence->>'source' = 'historical_pricing_result_exact_match'
-                     THEN NULL ELSE forecast_evidence END AS forecast_evidence
+                     THEN NULL ELSE forecast_evidence - 'qualityShareForecast' END AS forecast_evidence
          FROM inventory_publication_items WHERE publication_id = $1 ORDER BY id",
     )
     .bind(existing.id)
