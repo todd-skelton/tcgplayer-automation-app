@@ -50,6 +50,14 @@
 .quantity-column {
   text-align: center;
 }
+/* The copies in stock, what the count beside it adds to: a width of its own, wide enough for any
+   stock, so the count field does not move with it. */
+.stock-column {
+  width: 4.5rem;
+  white-space: nowrap;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .sku-column {
   width: 18rem;
 }

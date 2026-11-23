@@ -1,5 +1,7 @@
 //! Inventory Manager: count cards into inventory, set by set, a condition at a time, from the
 //! keyboard. Ported from `app/features/inventory-management/routes/inventory-manager.tsx`.
+//! Beside each count, a row shows how many copies the store has in stock: the publication
+//! seller's listings as the last inventory refresh or publication left them (`stock`).
 //!
 //! The filters are a GET form, so a set, a search or a product line is a link, and the server
 //! searches and pages a set without JavaScript. With it, the page brings the whole set once and
@@ -30,6 +32,7 @@ pub(crate) mod catalog;
 mod page;
 mod pending;
 pub mod queue;
+mod stock;
 mod views;
 
 pub use views::COMPONENTS;

@@ -386,6 +386,14 @@ impl Product {
         }
         self.skus[condition.index()]
     }
+
+    /// Every SKU it has: a sealed product's one, or one in each condition it has.
+    pub fn all_skus(&self) -> impl Iterator<Item = i32> + '_ {
+        self.unopened
+            .iter()
+            .chain(self.skus.iter().flatten())
+            .copied()
+    }
 }
 
 /// `Pikachu - 025/165 - Common - Japanese`: the name, the number when the name lacks it, the

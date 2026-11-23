@@ -140,6 +140,9 @@ pub struct ListedProduct {
     /// Its SKU in each condition, in [`Condition::ALL`]'s order, 0 where it has none; a sealed
     /// product's one SKU alone.
     pub skus: Vec<i32>,
+    /// The copies in stock of each of [`ListedProduct::skus`], null where it has no SKU or the
+    /// stock cannot be known.
+    pub stock: Vec<Option<i32>>,
 }
 
 impl IntakeListing {
@@ -167,6 +170,10 @@ impl IntakeListing {
                     language: language(product).to_owned(),
                     set: set as u32,
                     skus: skus_of(product),
+                    stock: skus_of(product)
+                        .into_iter()
+                        .map(|sku| in_stock(listing.stock.as_ref(), sku))
+                        .collect(),
                 }
             })
             .collect();
@@ -259,7 +266,15 @@ pub fn IntakeScreen<'a>(
     let drawn: Vec<RowOf> = listing
         .products
         .iter()
-        .map(|p| RowOf::new(p, listing.condition, &screen.quantities, &t))
+        .map(|p| {
+            RowOf::new(
+                p,
+                listing.condition,
+                &screen.quantities,
+                listing.stock.as_ref(),
+                &t,
+            )
+        })
         .collect();
     let blank = RowOf::default();
     html! {
@@ -412,9 +427,10 @@ pub fn IntakeScreen<'a>(
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
                     // No grid is shown without rows; the table stays for the script's refs.
-                    // The columns are in the order a count is checked in: the count first, in the
-                    // same place whatever is listed, then what tells apart the rows a card number
-                    // finds (the printing, the language, the condition), then the product. The set
+                    // The columns are in the order a count is checked in: the copies in stock and
+                    // the count first, in the same place whatever is listed, then what tells apart
+                    // the rows a card number finds (the printing, the language, the condition), then
+                    // the product. The set
                     // is the last column while one set is listed, and beside the SKU while every
                     // set is searched (`data-all-sets`, which the script keeps in step).
                     <table
@@ -430,6 +446,7 @@ pub fn IntakeScreen<'a>(
                         <thead data-no-prefetch>
                             <tr>
                                 <th class={ImageColumn}>"Image"</th>
+                                <th class={StockColumn}>"In Stock"</th>
                                 <th class={QuantityColumn}>"Quantity"</th>
                                 <th class={SkuColumn}>"SKU"</th>
                                 <th class={(SetColumn, SetBeside)}>"Set"</th>
@@ -476,6 +493,7 @@ pub fn IntakeScreen<'a>(
                                     thumbnail={&r.thumbnail}
                                     form={&r.form}
                                     sku={r.sku}
+                                    stock={&r.stock}
                                     count={r.count}
                                     label={&r.label}
                                     submit={SubmitKey::field(CountInput::FIELDS.submit)}
@@ -503,6 +521,7 @@ pub fn IntakeScreen<'a>(
                         thumbnail={&blank.thumbnail}
                         form={&blank.form}
                         sku={blank.sku}
+                        stock={&blank.stock}
                         count={blank.count}
                         label={&blank.label}
                         submit={SubmitKey::template_field(CountInput::FIELDS.submit)}
@@ -834,6 +853,14 @@ fn skus_of(product: &Product) -> Vec<i32> {
     }
 }
 
+/// The copies of `sku` in `stock`: none when it is no SKU (0) or the stock cannot be known.
+fn in_stock(stock: Option<&HashMap<i32, i32>>, sku: i32) -> Option<i32> {
+    if sku == 0 {
+        return None;
+    }
+    Some(stock?.get(&sku).copied().unwrap_or(0))
+}
+
 /// A row's key: the SKU it shows, or without one the product's first SKU, negated, so a row
 /// drawn in another condition is another row and no two rows share a key.
 fn key_of(skus: &[i32], sku: i32) -> i32 {
@@ -865,6 +892,8 @@ struct RowOf {
     thumbnail: String,
     form: String,
     sku: i32,
+    /// The copies in stock, empty when there is no SKU or the stock cannot be known.
+    stock: String,
     count: i32,
     label: String,
     /// Empty when Normal, which the stylesheet draws plainly.
@@ -886,6 +915,7 @@ impl RowOf {
         product: &Product,
         condition: Condition,
         quantities: &HashMap<i32, i32>,
+        stock: Option<&HashMap<i32, i32>>,
         t: &Msg,
     ) -> RowOf {
         let skus = skus_of(product);
@@ -905,6 +935,8 @@ impl RowOf {
                 count_form(sku)
             },
             sku,
+            stock: in_stock(stock, sku)
+                .map_or_else(String::new, |n| t.number(i64::from(n)).to_string()),
             count: quantities.get(&sku).copied().unwrap_or(0),
             label: label(product, shown),
             printing: printing.to_owned(),
@@ -933,10 +965,11 @@ impl RowOf {
 /// to its picture, which the table's click handler opens in a dialog; the handler steps its count
 /// too.
 ///
-/// Its cells are in the order a count is checked in. The count is second, after the thumbnail
-/// alone, so its field is in the same place whatever the row holds. Beside it is what tells apart
-/// the rows a card number finds: the printing (filled, unless Normal), the language unless English,
-/// and the condition. Then the card number, the name with its rarity, and the set, which has two
+/// Its cells are in the order a count is checked in. The count comes after the thumbnail and the
+/// copies in stock alone, neither of which changes the room it takes, so its field is in the same
+/// place whatever the row holds: the stock is what the count adds to, on its left. On its right is
+/// what tells apart the rows a card number finds: the printing (filled, unless Normal), the
+/// language unless English, and the condition. Then the card number, the name with its rarity, and the set, which has two
 /// cells of which the table shows one (`data-all-sets`). The condition and the name take the
 /// condition's color while the product has a SKU in it (`data-condition`); a row without one has
 /// its count form hidden (`data-missing`), which the keys skip.
@@ -955,6 +988,7 @@ pub fn IntakeRow<'a>(
     thumbnail: &'a str,
     form: &'a str,
     sku: i32,
+    stock: &'a str,
     count: i32,
     label: &'a str,
     submit: SubmitField,
@@ -976,6 +1010,7 @@ pub fn IntakeRow<'a>(
                     <img src={thumbnail} alt="" loading="lazy" decoding="async">
                 </a>
             </td>
+            <td class={StockColumn}>{stock}</td>
             <td class={QuantityColumn}>
                 <form
                     id={form}
@@ -1187,6 +1222,7 @@ mod tests {
             thumbnail: &row.thumbnail,
             form: &row.form,
             sku: row.sku,
+            stock: &row.stock,
             count: row.count,
             label: &row.label,
             submit,
@@ -1217,7 +1253,7 @@ mod tests {
         let t = Msg::default();
         let counts = HashMap::from([(11, 4)]);
         let selection = Selection::default();
-        let lp = RowOf::new(&product, Condition::LightlyPlayed, &counts, &t);
+        let lp = RowOf::new(&product, Condition::LightlyPlayed, &counts, None, &t);
         let html = drawn(&lp, &selection);
         assert_eq!((lp.key, lp.sku, lp.count), (11, 11, 4));
         assert!(html.contains("data-condition=\"lightly-played\""), "{html}");
@@ -1237,7 +1273,7 @@ mod tests {
             html.contains(&format!("id=\"{}\"", count_form(11))),
             "{html}"
         );
-        let dmg = RowOf::new(&product, Condition::Damaged, &counts, &t);
+        let dmg = RowOf::new(&product, Condition::Damaged, &counts, None, &t);
         let html = drawn(&dmg, &selection);
         assert_eq!((dmg.key, dmg.sku, dmg.missing), (-10, 0, true));
         assert!(html.contains("data-missing"), "{html}");
@@ -1246,11 +1282,11 @@ mod tests {
         assert_eq!(key_of(&skus_of(&product), 0), -10);
     }
 
-    /// The count comes before everything a row says about its product but the thumbnail, so its
-    /// field does not move with what is listed, and what tells apart the rows a card number finds
-    /// is next to it: the printing, the language unless English, then the condition. The card
-    /// number, the name and its rarity follow, each in a cell of its own, and the set is there
-    /// twice, for the table to show beside the SKU or last.
+    /// The count comes before everything a row says about its product but the thumbnail and the
+    /// copies in stock, so its field does not move with what is listed, and what tells apart the
+    /// rows a card number finds is next to it: the printing, the language unless English, then the
+    /// condition. The card number, the name and its rarity follow, each in a cell of its own, and
+    /// the set is there twice, for the table to show beside the SKU or last.
     #[test]
     fn a_row_puts_the_count_before_what_tells_the_rows_apart() {
         let t = Msg::default();
@@ -1260,11 +1296,13 @@ mod tests {
             language: "Japanese".into(),
             ..card()
         };
-        let row = RowOf::new(&japanese, Condition::NearMint, &counts, &t);
+        let stock = HashMap::from([(10, 7)]);
+        let row = RowOf::new(&japanese, Condition::NearMint, &counts, Some(&stock), &t);
         let html = drawn(&row, &selection);
         let at = |part: &str| html.find(part).unwrap_or_else(|| panic!("{part}: {html}"));
         let order = [
             at("<img"),
+            at(">7</td>"),
             at("<form"),
             at(">Reverse Holofoil<"),
             at(">Japanese<"),
@@ -1282,7 +1320,7 @@ mod tests {
             variant: "Normal".into(),
             ..card()
         };
-        let row = RowOf::new(&normal, Condition::NearMint, &counts, &t);
+        let row = RowOf::new(&normal, Condition::NearMint, &counts, None, &t);
         assert_eq!(
             (
                 row.printing.as_str(),
@@ -1297,7 +1335,7 @@ mod tests {
                 product_name: product_name.into(),
                 ..card()
             };
-            RowOf::new(&product, Condition::NearMint, &counts, &t).product_name
+            RowOf::new(&product, Condition::NearMint, &counts, None, &t).product_name
         };
         assert_eq!(numbered("Pikachu - 58/102"), "Pikachu");
         assert_eq!(
@@ -1311,7 +1349,7 @@ mod tests {
             unopened: Some(12),
             ..normal
         };
-        let row = RowOf::new(&sealed, Condition::NearMint, &counts, &t);
+        let row = RowOf::new(&sealed, Condition::NearMint, &counts, None, &t);
         assert_eq!(
             (row.printing_name.as_str(), row.condition_name.as_str()),
             ("", "Unopened")
@@ -1333,6 +1371,7 @@ mod tests {
             &product,
             Condition::NearMint,
             &HashMap::from([(10, 2)]),
+            None,
             &Msg::default(),
         );
         let html = drawn(&row, &selection);
@@ -1493,6 +1532,7 @@ mod tests {
             page: 1,
             pages: 1,
             matched: 1,
+            stock: Some(HashMap::from([(11, 3)])),
         };
         let html = ListingParts { listing: &listing }.to_html();
         let ids: [ElementId; 5] = [
@@ -1520,6 +1560,28 @@ mod tests {
         let listed = IntakeListing::of(&listing);
         assert_eq!(listed.address, "/inventory-manager?line=3&set=2");
         assert_eq!(listed.products.len(), 1);
+        assert_eq!(
+            listed.products[0].stock,
+            [Some(0), Some(3), None, None, None]
+        );
+    }
+
+    /// A row shows how many copies of its SKU the store has in stock: none listed is 0, and
+    /// nothing is shown without a SKU in the condition or when the stock cannot be known.
+    #[test]
+    fn a_row_shows_the_copies_in_stock() {
+        let product = card();
+        let t = Msg::default();
+        let counts = HashMap::new();
+        let stock = HashMap::from([(11, 1234)]);
+        let row = |condition, stock| RowOf::new(&product, condition, &counts, stock, &t);
+        assert_eq!(row(Condition::LightlyPlayed, Some(&stock)).stock, "1,234");
+        assert_eq!(row(Condition::NearMint, Some(&stock)).stock, "0");
+        assert_eq!(row(Condition::Damaged, Some(&stock)).stock, "");
+        assert_eq!(row(Condition::LightlyPlayed, None).stock, "");
+        let lp = row(Condition::LightlyPlayed, Some(&stock));
+        let html = drawn(&lp, &Selection::default());
+        assert!(html.contains(">1,234</td>"), "{html}");
     }
 
     /// The products the page brings are the screen's to draw from, with nothing drawn again and
@@ -1568,7 +1630,7 @@ mod tests {
                 count_form: "count-", conditions: ["Near Mint"], unopened: "Unopened", normal: "Normal", sets: ["Base Set"],
                 products: skus.map((sku, i) => ({
                     product: i, name: "P" + i + " - 58/102 - Common", product_name: "P" + i, rarity: "Common", number: "58/102",
-                    printing: printings[i], language: i ? "Japanese" : "", set: 0, skus: [sku, 0],
+                    printing: printings[i], language: i ? "Japanese" : "", set: 0, skus: [sku, 0], stock: [1, null],
                 })),
             });
             const said = (r) => [r.printing, r.printing_name, r.language, r.condition_name, r.set, r.number, r.product_name, r.rarity].join("|");

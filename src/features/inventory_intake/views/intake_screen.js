@@ -126,6 +126,7 @@ function rowOf(k, listing, product, drawn) {
   const key = sku !== 0 ? sku : -(product.skus.find((other) => other !== 0) ?? 0);
   const kept = drawn.get(key);
   const count = kept && Number.isFinite(kept.count) ? kept.count : (s.counts.get(sku) ?? 0);
+  const stock = product.stock[at] ?? null;
   const printed = product.printing === "" ? product.name : product.name + " " + product.printing;
   const [before = "", after = ""] = listing.picture;
   const [small = "", smallAfter = ""] = listing.thumbnail;
@@ -137,6 +138,7 @@ function rowOf(k, listing, product, drawn) {
     thumbnail: small + product.product + smallAfter,
     form: sku === 0 ? "" : listing.count_form + sku,
     sku,
+    stock: stock === null ? "" : k.number(stock),
     count,
     label: k.quantity({ product: printed, condition: named }),
     printing: product.printing,

@@ -27,6 +27,8 @@ export interface IntakeListing {
   count_form: string;
   /** Whether they are shown by name, Z to A. */
   descending: boolean;
+  /** What a row calls the printing that has no name of its own. */
+  normal: string;
   /** The page the server drew, counting from 1. */
   page: number;
   /** The query parameter of the page shown, which the script keeps in the address. */
@@ -59,6 +61,8 @@ export interface LabelFormFill {
 
 /** A product as the script searches and draws it. */
 export interface ListedProduct {
+  /** Its language, empty when English. */
+  language: string;
   /** `Pikachu - 025/165 - Common`, which a search matches when no card number does. */
   name: string;
   /** Its card number, which a search matches first; empty when it has none. */
@@ -66,6 +70,10 @@ export interface ListedProduct {
   /** Its printing, empty when Normal. */
   printing: string;
   product: number;
+  /** `Pikachu`, the name its row shows: the product's, without the card number it may end with. */
+  product_name: string;
+  /** Its rarity, empty when it has none. */
+  rarity: string;
   /** Its set's place in [`IntakeListing::sets`]. */
   set: number;
   /**
@@ -73,6 +81,11 @@ export interface ListedProduct {
    * product's one SKU alone.
    */
   skus: number[];
+  /**
+   * The copies in stock of each of [`ListedProduct::skus`], null where it has no SKU or the
+   * stock cannot be known.
+   */
+  stock: (number | null)[];
 }
 
 export interface PendingCount {
@@ -109,19 +122,24 @@ declare module "corten/views" {
     missing: boolean;
     picture: string;
     thumbnail: string;
-    set: string;
-    sku_name: string;
-    printing: string;
     form: string;
     sku: number;
+    stock: string;
     count: number;
     label: string;
-    name: string;
+    printing: string;
+    printing_name: string;
+    language: string;
+    condition_name: string;
+    set: string;
+    number: string;
+    product_name: string;
+    rarity: string;
     /** Writes every hole of `el` (a IntakeRow's root) from `data`. */
-    static fill(el: Element, data: { key: number; condition: string; missing: boolean; picture: string; thumbnail: string; set: string; sku_name: string; printing: string; form: string; sku: number; count: number; label: string; name: string }): void;
+    static fill(el: Element, data: { key: number; condition: string; missing: boolean; picture: string; thumbnail: string; form: string; sku: number; stock: string; count: number; label: string; printing: string; printing_name: string; language: string; condition_name: string; set: string; number: string; product_name: string; rarity: string }): void;
     /** The key of a IntakeRow's root (its key={key}). */
     static key(el: Element): string;
-    static keyOf(data: { key: number; condition: string; missing: boolean; picture: string; thumbnail: string; set: string; sku_name: string; printing: string; form: string; sku: number; count: number; label: string; name: string }): string;
+    static keyOf(data: { key: number; condition: string; missing: boolean; picture: string; thumbnail: string; form: string; sku: number; stock: string; count: number; label: string; printing: string; printing_name: string; language: string; condition_name: string; set: string; number: string; product_name: string; rarity: string }): string;
   }
   /** The view of #[component(view)] ItemCard: its holes, read from and written to the page. */
   export class ItemCard {
