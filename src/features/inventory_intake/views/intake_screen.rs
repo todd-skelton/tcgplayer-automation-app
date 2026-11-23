@@ -103,6 +103,8 @@ pub struct IntakeListing {
     pub page_field: String,
     /// A product's picture is its id between these two.
     pub picture: [String; 2],
+    /// The thumbnail a row shows is a product's id between these two.
+    pub thumbnail: [String; 2],
     /// A count form's id is its SKU after this.
     pub count_form: String,
     /// Each condition's name, in [`Condition::ALL`]'s order, as the condition select lists them.
@@ -167,6 +169,7 @@ impl IntakeListing {
             descending: listing.selection.sort == Some(ProductOrder::NameDown),
             page_field: Selection::FIELDS.page.to_string(),
             picture: [PICTURE.0.to_owned(), PICTURE.1.to_owned()],
+            thumbnail: [THUMBNAIL.0.to_owned(), THUMBNAIL.1.to_owned()],
             count_form: count_form_prefix(),
             conditions: Condition::ALL.iter().map(|c| c.name().to_owned()).collect(),
             unopened: UNOPENED.to_owned(),
@@ -446,6 +449,7 @@ pub fn IntakeScreen<'a>(
                                     condition={&r.condition}
                                     missing={r.missing}
                                     picture={&r.picture}
+                                    thumbnail={&r.thumbnail}
                                     set={&r.set}
                                     sku_name={&r.sku_name}
                                     printing={&r.printing}
@@ -468,6 +472,7 @@ pub fn IntakeScreen<'a>(
                         condition={&blank.condition}
                         missing={blank.missing}
                         picture={&blank.picture}
+                        thumbnail={&blank.thumbnail}
                         set={&blank.set}
                         sku_name={&blank.sku_name}
                         printing={&blank.printing}
@@ -730,11 +735,22 @@ const PICTURE: (&str, &str) = (
     "_in_400x400.jpg",
 );
 
+/// TCGplayer's smaller picture of a product, the thumbnail a row shows, is its id between these
+/// two.
+const THUMBNAIL: (&str, &str) = (
+    "https://tcgplayer-cdn.tcgplayer.com/product/",
+    "_in_200x200.jpg",
+);
+
 /// What a sealed product's one SKU is called.
 const UNOPENED: &str = "Unopened";
 
 fn picture(product_id: i32) -> String {
     format!("{}{product_id}{}", PICTURE.0, PICTURE.1)
+}
+
+fn thumbnail(product_id: i32) -> String {
+    format!("{}{product_id}{}", THUMBNAIL.0, THUMBNAIL.1)
 }
 
 /// `Base Set - 1999`.
@@ -791,6 +807,7 @@ struct RowOf {
     condition: String,
     missing: bool,
     picture: String,
+    thumbnail: String,
     set: String,
     sku_name: String,
     printing: String,
@@ -823,6 +840,7 @@ impl RowOf {
             condition: shown.map(|c| c.to_string()).unwrap_or_default(),
             missing: sku == 0,
             picture: picture(product.product_id),
+            thumbnail: thumbnail(product.product_id),
             set: set_label(product),
             sku_name,
             printing: printing.to_owned(),
@@ -841,8 +859,9 @@ impl RowOf {
 
 /// A product's row, in the condition chosen. `view` makes `IntakeRow` in `corten/views`: the
 /// server draws a page of them and the script makes the rest from the screen's `<template>`, so
-/// every part that changes from row to row is a hole. The table's click handler opens its picture
-/// and steps its count. The set, the SKU and the name take the condition's color while the
+/// every part that changes from row to row is a hole. The row shows the product's thumbnail, a link
+/// to its picture, which the table's click handler opens in a dialog; the handler steps its count
+/// too. The set, the SKU and the name take the condition's color while the
 /// product has a SKU in it (`data-condition`); a row without one
 /// has its count form hidden (`data-missing`), which the keys skip.
 ///
@@ -857,6 +876,7 @@ pub fn IntakeRow<'a>(
     condition: &'a str,
     missing: bool,
     picture: &'a str,
+    thumbnail: &'a str,
     set: &'a str,
     sku_name: &'a str,
     printing: &'a str,
@@ -872,7 +892,9 @@ pub fn IntakeRow<'a>(
     html! {
         <tr key={key} class={ProductRow} data-condition={condition} data-missing={missing}>
             <td>
-                <a href={picture} tabindex="-1">"View"</a>
+                <a href={picture} class={Thumbnail} tabindex="-1" aria-label="View picture">
+                    <img src={thumbnail} alt="" loading="lazy" decoding="async">
+                </a>
             </td>
             <td>
                 <span
@@ -1070,6 +1092,7 @@ mod tests {
             condition: &row.condition,
             missing: row.missing,
             picture: &row.picture,
+            thumbnail: &row.thumbnail,
             set: &row.set,
             sku_name: &row.sku_name,
             printing: &row.printing,
@@ -1367,7 +1390,7 @@ mod tests {
             };
             const listing = (query, skus) => ({
                 address: at(query).slice("http://localhost".length),
-                searches: true, page: 1, descending: false, page_field: "page", picture: ["", ""],
+                searches: true, page: 1, descending: false, page_field: "page", picture: ["", ""], thumbnail: ["", ""],
                 count_form: "count-", conditions: ["Near Mint"], unopened: "Unopened", sets: ["Base Set"],
                 products: skus.map((sku, i) => ({ product: i, name: "P" + i, number: "", printing: "", set: 0, skus: [sku, 0] })),
             });

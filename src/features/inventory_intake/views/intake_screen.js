@@ -128,11 +128,13 @@ function rowOf(k, listing, product, drawn) {
   const count = kept && Number.isFinite(kept.count) ? kept.count : (s.counts.get(sku) ?? 0);
   const printed = product.printing === "" ? product.name : product.name + " " + product.printing;
   const [before = "", after = ""] = listing.picture;
+  const [small = "", smallAfter = ""] = listing.thumbnail;
   return {
     key,
     condition: sealed ? "" : k.conditions.value,
     missing: sku === 0,
     picture: before + product.product + after,
+    thumbnail: small + product.product + smallAfter,
     set: listing.sets[product.set] ?? "",
     sku_name: sku === 0 ? k.unavailable({ condition: named }) : product.printing === "" ? named : named + " " + product.printing,
     printing: product.printing,
