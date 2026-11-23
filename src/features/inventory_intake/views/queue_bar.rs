@@ -237,15 +237,6 @@ pub fn QueueForm<'a>(
                         </div>
                     </RequiredWhen>
                     <div class={(PurchaseFields, row(Space::_3))}>
-                        <label>
-                            "Purchase date"
-                            <input
-                                class={Input {}}
-                                type="date"
-                                name={f.purchase_date}
-                                value={&input.purchase_date}
-                            >
-                        </label>
                         <label class={Choice}>
                             <input
                                 type="checkbox"
@@ -259,8 +250,24 @@ pub fn QueueForm<'a>(
                             "Enter only this handoff's share if the purchase is split across batches. It is split across the cards by quantity and clears after the batch is queued."
                         </p>
                     </div>
+                    <div class={row(Space::_3)}>
+                        <label>
+                            "Purchase date"
+                            <input
+                                class={Input {}}
+                                type="date"
+                                name={f.purchase_date}
+                                value={&input.purchase_date}
+                                {..e.aria(f.purchase_date)}
+                            >
+                            {e.message(f.purchase_date)}
+                        </label>
+                        <p class={muted()}>
+                            "The day you bought this lot. Estimates then use each card's market price from that week, once pricing has read the card's price history; left blank, they use the market price when each card was counted. The date stays for later batches of this lot."
+                        </p>
+                    </div>
                     <p class={muted()}>
-                        "Cost feeds margins and Inventory Economics; pricing does not use it. Estimates use each card's market price at intake, so a card worth less than the amount per card counts as negative cost."
+                        "Cost feeds margins and Inventory Economics; pricing does not use it. A card worth less than the amount per card counts as negative cost."
                     </p>
                 </fieldset>
             </details>
