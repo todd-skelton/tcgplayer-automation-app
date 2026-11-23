@@ -100,6 +100,10 @@
   width: 3.5rem;
   text-align: center;
 }
+.stock {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 /* The product's thumbnail, big enough to tell printings apart, and a link to its picture. The box
    keeps its size while the image loads, so the rows do not move. */
 .thumbnail {
