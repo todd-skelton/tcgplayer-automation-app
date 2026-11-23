@@ -130,6 +130,9 @@ pub struct ListedProduct {
     /// Its SKU in each condition, in [`Condition::ALL`]'s order, 0 where it has none; a sealed
     /// product's one SKU alone.
     pub skus: Vec<i32>,
+    /// The copies in stock of each of [`ListedProduct::skus`], null where it has no SKU or the
+    /// stock cannot be known.
+    pub stock: Vec<Option<i32>>,
 }
 
 impl IntakeListing {
@@ -154,6 +157,10 @@ impl IntakeListing {
                     printing: printing(product).to_owned(),
                     set: set as u32,
                     skus: skus_of(product),
+                    stock: skus_of(product)
+                        .into_iter()
+                        .map(|sku| in_stock(listing.stock.as_ref(), sku))
+                        .collect(),
                 }
             })
             .collect();
@@ -244,7 +251,15 @@ pub fn IntakeScreen<'a>(
     let drawn: Vec<RowOf> = listing
         .products
         .iter()
-        .map(|p| RowOf::new(p, listing.condition, &screen.quantities, &t))
+        .map(|p| {
+            RowOf::new(
+                p,
+                listing.condition,
+                &screen.quantities,
+                listing.stock.as_ref(),
+                &t,
+            )
+        })
         .collect();
     let blank = RowOf::default();
     html! {
@@ -407,6 +422,7 @@ pub fn IntakeScreen<'a>(
                                 <th>"Image"</th>
                                 <th>"Set"</th>
                                 <th>"SKU"</th>
+                                <th>"In Stock"</th>
                                 <th>"Quantity"</th>
                                 <SortHeader
                                     label="Product Name"
@@ -451,6 +467,7 @@ pub fn IntakeScreen<'a>(
                                     printing={&r.printing}
                                     form={&r.form}
                                     sku={r.sku}
+                                    stock={&r.stock}
                                     count={r.count}
                                     label={&r.label}
                                     submit={SubmitKey::field(CountInput::FIELDS.submit)}
@@ -473,6 +490,7 @@ pub fn IntakeScreen<'a>(
                         printing={&blank.printing}
                         form={&blank.form}
                         sku={blank.sku}
+                        stock={&blank.stock}
                         count={blank.count}
                         label={&blank.label}
                         submit={SubmitKey::template_field(CountInput::FIELDS.submit)}
@@ -763,6 +781,14 @@ fn skus_of(product: &Product) -> Vec<i32> {
     }
 }
 
+/// The copies of `sku` in `stock`: none when it is no SKU (0) or the stock cannot be known.
+fn in_stock(stock: Option<&HashMap<i32, i32>>, sku: i32) -> Option<i32> {
+    if sku == 0 {
+        return None;
+    }
+    Some(stock?.get(&sku).copied().unwrap_or(0))
+}
+
 /// A row's key: the SKU it shows, or without one the product's first SKU, negated, so a row
 /// drawn in another condition is another row and no two rows share a key.
 fn key_of(skus: &[i32], sku: i32) -> i32 {
@@ -796,6 +822,8 @@ struct RowOf {
     printing: String,
     form: String,
     sku: i32,
+    /// The copies in stock, empty when there is no SKU or the stock cannot be known.
+    stock: String,
     count: i32,
     label: String,
     name: String,
@@ -806,6 +834,7 @@ impl RowOf {
         product: &Product,
         condition: Condition,
         quantities: &HashMap<i32, i32>,
+        stock: Option<&HashMap<i32, i32>>,
         t: &Msg,
     ) -> RowOf {
         let skus = skus_of(product);
@@ -832,6 +861,8 @@ impl RowOf {
                 count_form(sku)
             },
             sku,
+            stock: in_stock(stock, sku)
+                .map_or_else(String::new, |n| t.number(i64::from(n)).to_string()),
             count: quantities.get(&sku).copied().unwrap_or(0),
             label: label(product, shown),
             name: product.display_name.clone(),
@@ -862,6 +893,7 @@ pub fn IntakeRow<'a>(
     printing: &'a str,
     form: &'a str,
     sku: i32,
+    stock: &'a str,
     count: i32,
     label: &'a str,
     name: &'a str,
@@ -889,6 +921,7 @@ pub fn IntakeRow<'a>(
                     {sku_name}
                 </span>
             </td>
+            <td class={Stock}>{stock}</td>
             <td>
                 <form
                     id={form}
@@ -1075,6 +1108,7 @@ mod tests {
             printing: &row.printing,
             form: &row.form,
             sku: row.sku,
+            stock: &row.stock,
             count: row.count,
             label: &row.label,
             name: &row.name,
@@ -1098,7 +1132,7 @@ mod tests {
         let t = Msg::default();
         let counts = HashMap::from([(11, 4)]);
         let selection = Selection::default();
-        let lp = RowOf::new(&product, Condition::LightlyPlayed, &counts, &t);
+        let lp = RowOf::new(&product, Condition::LightlyPlayed, &counts, None, &t);
         let html = drawn(&lp, &selection);
         assert_eq!((lp.key, lp.sku, lp.count), (11, 11, 4));
         assert!(html.contains("data-condition=\"lightly-played\""), "{html}");
@@ -1114,7 +1148,7 @@ mod tests {
             html.contains(&format!("id=\"{}\"", count_form(11))),
             "{html}"
         );
-        let dmg = RowOf::new(&product, Condition::Damaged, &counts, &t);
+        let dmg = RowOf::new(&product, Condition::Damaged, &counts, None, &t);
         let html = drawn(&dmg, &selection);
         assert_eq!((dmg.key, dmg.sku, dmg.missing), (-10, 0, true));
         assert!(html.contains("data-missing"), "{html}");
@@ -1138,6 +1172,7 @@ mod tests {
             &product,
             Condition::NearMint,
             &HashMap::from([(10, 2)]),
+            None,
             &Msg::default(),
         );
         let html = drawn(&row, &selection);
@@ -1298,6 +1333,7 @@ mod tests {
             page: 1,
             pages: 1,
             matched: 1,
+            stock: Some(HashMap::from([(11, 3)])),
         };
         let html = ListingParts { listing: &listing }.to_html();
         let ids: [ElementId; 5] = [
@@ -1325,6 +1361,28 @@ mod tests {
         let listed = IntakeListing::of(&listing);
         assert_eq!(listed.address, "/inventory-manager?line=3&set=2");
         assert_eq!(listed.products.len(), 1);
+        assert_eq!(
+            listed.products[0].stock,
+            [Some(0), Some(3), None, None, None]
+        );
+    }
+
+    /// A row shows how many copies of its SKU the store has in stock: none listed is 0, and
+    /// nothing is shown without a SKU in the condition or when the stock cannot be known.
+    #[test]
+    fn a_row_shows_the_copies_in_stock() {
+        let product = card();
+        let t = Msg::default();
+        let counts = HashMap::new();
+        let stock = HashMap::from([(11, 1234)]);
+        let row = |condition, stock| RowOf::new(&product, condition, &counts, stock, &t);
+        assert_eq!(row(Condition::LightlyPlayed, Some(&stock)).stock, "1,234");
+        assert_eq!(row(Condition::NearMint, Some(&stock)).stock, "0");
+        assert_eq!(row(Condition::Damaged, Some(&stock)).stock, "");
+        assert_eq!(row(Condition::LightlyPlayed, None).stock, "");
+        let lp = row(Condition::LightlyPlayed, Some(&stock));
+        let html = drawn(&lp, &Selection::default());
+        assert!(html.contains(">1,234</td>"), "{html}");
     }
 
     /// The products the page brings are the screen's to draw from, with nothing drawn again and
@@ -1369,7 +1427,7 @@ mod tests {
                 address: at(query).slice("http://localhost".length),
                 searches: true, page: 1, descending: false, page_field: "page", picture: ["", ""],
                 count_form: "count-", conditions: ["Near Mint"], unopened: "Unopened", sets: ["Base Set"],
-                products: skus.map((sku, i) => ({ product: i, name: "P" + i, number: "", printing: "", set: 0, skus: [sku, 0] })),
+                products: skus.map((sku, i) => ({ product: i, name: "P" + i, number: "", printing: "", set: 0, skus: [sku, 0], stock: [1, null] })),
             });
             start(k, false);
             listed(listing("line=3&set=1", [10]));

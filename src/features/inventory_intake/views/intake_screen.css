@@ -100,6 +100,10 @@
   width: 3.5rem;
   text-align: center;
 }
+.stock {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .picture {
   & img {
     display: block;

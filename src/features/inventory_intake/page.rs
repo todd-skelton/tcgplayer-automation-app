@@ -10,6 +10,7 @@ use super::{
     catalog::{self, Condition, Product, ProductLine, ProductOrder, Scope, Set, Shown},
     pending::{self, Place, Totals},
     queue::{self, CostRate, NotQueued, Queue, QueueInput},
+    stock,
     url::{self, Selection},
     views::{
         BATCHES_EVERY, BackgroundBatches, ClearConfirm, CountForm, Counted, IntakeError,
@@ -50,9 +51,10 @@ impl Screen {
     }
 }
 
-/// What the screen lists for a selection: the line's sets and the set chosen, and the products
-/// the filters keep. Nothing in it changes with the counts or the batches, so a set's answer with
-/// JavaScript reads this alone, and the browser can keep it.
+/// What the screen lists for a selection: the line's sets and the set chosen, the products the
+/// filters keep, and how many of their SKUs the store has in stock. Nothing in it changes with the
+/// counts or the batches, so a set's answer with JavaScript reads this alone, and the browser can
+/// keep it.
 pub struct Listing {
     pub selection: Selection,
     pub line: i32,
@@ -69,6 +71,8 @@ pub struct Listing {
     pub page: usize,
     pub pages: usize,
     pub matched: usize,
+    /// The copies in stock of each listed SKU that has any, or None when it cannot be known.
+    pub stock: Option<HashMap<i32, i32>>,
 }
 
 impl Listing {
@@ -103,6 +107,8 @@ impl Listing {
             selection.rows.unwrap_or_default(),
         );
         let products = products.into_iter().cloned().collect();
+        let skus: Vec<i32> = listed.iter().flat_map(Product::all_skus).collect();
+        let stock = stock::in_stock(db, &skus).await;
         Ok(Listing {
             selection: selection.clone(),
             line,
@@ -115,13 +121,15 @@ impl Listing {
             page,
             pages,
             matched,
+            stock,
         })
     }
 }
 
 /// How long the browser keeps a set's answer: choosing a set seen this long ago draws it with no
-/// request. It holds only the catalog, which changes when the catalog is loaded again, not while
-/// counting.
+/// request. It holds the catalog, which changes when the catalog is loaded again, not while
+/// counting, and the stock, which changes when inventory is refreshed or a batch is published, so
+/// a set seen again may show stock up to this old.
 const LISTING_KEPT: &str = "private, max-age=300";
 
 /// The screen for the filters in the query. With JavaScript the filters are a GET `data-patch`
