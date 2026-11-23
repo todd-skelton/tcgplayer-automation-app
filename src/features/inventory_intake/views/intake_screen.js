@@ -14,6 +14,7 @@
 // pressed), Enter on a field not yet changed adds one, and either way goes back to the search;
 // Up and Down move to the row above or below. Anywhere on the screen: Ctrl+Up and Ctrl+Down (Cmd
 // on a Mac) step the condition, Page Up and Page Down the set, with an empty search to type in.
+// A set picked in the set picker is listed the same way, so a card number can be typed next.
 //
 // A field shows its new count at once and its form is sent with it. A change made while one is
 // on its way waits for that answer, then goes with the latest count; the answer is the form with
@@ -32,7 +33,7 @@ import { search as searchSet } from "./set_search.js";
  * @typedef {object} Keys
  * @property {HTMLFormElement} filters
  * @property {HTMLSelectElement} conditions
- * @property {HTMLLabelElement} set The Set field, whose select a set's answer replaces.
+ * @property {HTMLDivElement} set The Set field, whose picker a set's answer replaces.
  * @property {HTMLInputElement} search
  * @property {HTMLButtonElement} go The Search button, which sends a search.
  * @property {HTMLSelectElement} size
@@ -79,8 +80,15 @@ const state = () =>
     keys: null,
   }));
 
-/** The set select, the one in the page now. @param {Keys} k */
-const setsOf = (k) => /** @type {HTMLSelectElement} */ (k.set.control);
+/**
+ * The select that holds the set picked, under the set picker in the page now. Its first option is
+ * no set: what the picker shows with none picked.
+ * @param {Keys} k
+ */
+const setsOf = (k) => k.set.querySelector("select");
+
+/** @param {unknown} el @returns {el is HTMLInputElement} The set picker's text, which the user types in. */
+const isSetText = (el) => el instanceof HTMLInputElement && el.getAttribute("role") === "combobox";
 
 /** @param {unknown} el @returns {el is HTMLInputElement} */
 const isCount = (el) => el instanceof HTMLInputElement && el.dataset.sku !== undefined;
@@ -343,25 +351,56 @@ export function keys(event, screen, k) {
     }
   }
   const sets = setsOf(k);
-  if ((event.key === "PageUp" || event.key === "PageDown") && !sets.disabled) {
-    // The next set, to search afresh: the search is emptied and keeps focus, and the filters go
-    // with no submitter, so the set's answer comes (`submitted` keeps a search to the page), and
-    // focus stays in the search, which the answer leaves as it is.
+  if ((event.key === "PageUp" || event.key === "PageDown") && sets && !sets.disabled) {
     event.preventDefault();
-    const n = sets.options.length;
-    sets.selectedIndex = (sets.selectedIndex + (event.key === "PageUp" ? -1 : 1) + n) % n;
-    k.search.value = "";
-    focusField(k.search);
+    // The search first: the set picker, when focus leaves it, puts back the set it shows.
+    searchAfresh(k);
+    const by = event.key === "PageUp" ? -1 : 1;
+    const n = sets.options.length - 1;
+    const at = sets.selectedIndex - 1;
+    sets.selectedIndex = 1 + (at < 0 ? (by > 0 ? 0 : n - 1) : (at + by + n) % n);
     k.filters.requestSubmit();
   }
 }
 
-/** A field taking focus starts an edit: nothing typed yet, its text selected. @param {FocusEvent} event */
+/**
+ * Another set is to be listed, to search afresh: the search is emptied and takes focus, which the
+ * set's answer leaves as it is. The filters then go with no submitter, so the answer comes
+ * (`submitted` keeps a search to the page).
+ * @param {Keys} k
+ */
+function searchAfresh(k) {
+  k.search.value = "";
+  focusField(k.search);
+}
+
+/**
+ * The set picker changed the set. One picked is listed, to search afresh. The picker emptied and
+ * left picks none, which the screen does not list: the set listed is asked for again, and its
+ * answer draws the picker with it.
+ * @param {Keys} k @param {HTMLSelectElement} sets
+ */
+function picked(k, sets) {
+  if (sets.value === "") sets.value = Array.from(sets.options).find((option) => option.defaultSelected)?.value ?? "";
+  else searchAfresh(k);
+  k.filters.requestSubmit();
+}
+
+/**
+ * A field taking focus starts an edit: nothing typed yet, its text selected. The set picker's
+ * text is selected too, so typing looks for another set rather than adding to the one shown.
+ * @param {FocusEvent} event
+ */
 export function focused(event) {
   const s = state();
   const target = event.target;
   if (!isCount(target)) {
     s.focused = null;
+    if (isSetText(target)) {
+      setTimeout(() => {
+        if (document.activeElement === target) target.select();
+      }, 0);
+    }
     return;
   }
   const sku = target.dataset.sku ?? "";
@@ -427,17 +466,20 @@ export function clicked(event, to) {
 
 /**
  * A filter changed: the condition and the rows per page are drawn at once, the search as it is
- * typed, and anything else is sent for the products it keeps.
+ * typed, and anything else is sent for the products it keeps. The set picker's text is no filter:
+ * the set picked is, which its select says.
  * @param {Event} event @param {Keys} k
  */
 export function filtered(event, k) {
   const target = event.target;
   if (target === k.conditions) return shown(k, null);
-  if (target === k.search) return;
+  if (target === k.search || isSetText(target)) return;
   if (target === k.size && state().listing) {
     state().page = 1;
     return draw(k);
   }
+  const sets = setsOf(k);
+  if (sets && target === sets) return picked(k, sets);
   k.filters.requestSubmit();
 }
 
