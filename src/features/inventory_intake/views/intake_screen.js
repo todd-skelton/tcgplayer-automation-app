@@ -135,14 +135,18 @@ function rowOf(k, listing, product, drawn) {
     missing: sku === 0,
     picture: before + product.product + after,
     thumbnail: small + product.product + smallAfter,
-    set: listing.sets[product.set] ?? "",
-    sku_name: sku === 0 ? k.unavailable({ condition: named }) : product.printing === "" ? named : named + " " + product.printing,
-    printing: product.printing,
     form: sku === 0 ? "" : listing.count_form + sku,
     sku,
     count,
     label: k.quantity({ product: printed, condition: named }),
-    name: product.name,
+    printing: product.printing,
+    printing_name: product.printing !== "" ? product.printing : sealed ? "" : listing.normal,
+    language: product.language,
+    condition_name: sku === 0 ? k.unavailable({ condition: named }) : named,
+    set: listing.sets[product.set] ?? "",
+    number: product.number,
+    product_name: product.product_name,
+    rarity: product.rarity,
   };
 }
 
@@ -198,8 +202,9 @@ function draw(k) {
 /**
  * The products the page brought, which the screen draws from from now on. Those a set's answer
  * brings are drawn at once with the counts the screen holds, and the address says which set it
- * is: a new history entry, so Back returns to the set before. A card number found in every set
- * puts focus on the first product's field, as after a search of the set.
+ * is: a new history entry, so Back returns to the set before. The table shows the set's column
+ * where the products need it: last for one set's, beside the SKU for every set's. A card number
+ * found in every set puts focus on the first product's field, as after a search of the set.
  * @param {IntakeListing} listing
  */
 export function listed(listing) {
@@ -213,6 +218,8 @@ export function listed(listing) {
   const to = new URL(listing.address, location.href);
   if (to.href !== location.href) history.pushState(null, "", to);
   k.sort.disabled = !s.descending;
+  // With every set searched the set tells the rows apart, so the table shows it beside the SKU.
+  k.table.toggleAttribute("data-all-sets", !listing.searches);
   draw(k);
   if (!listing.searches && k.search.value.trim() !== "") focusFirst(k);
 }
