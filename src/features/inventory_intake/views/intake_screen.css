@@ -38,12 +38,66 @@
     min-width: 12rem;
   }
 }
-.name {
+/* The columns, in the order a count is checked in. The thumbnail and the count are as wide as
+   what they hold and the SKU's column has a width of its own, so the count field and what follows
+   it stay where they are whatever is listed; the name takes the room left. */
+.image-column,
+.quantity-column,
+.number-column {
+  width: 1%;
+  white-space: nowrap;
+}
+.quantity-column {
+  text-align: center;
+}
+/* The copies in stock, what the count beside it adds to: a width of its own, wide enough for any
+   stock, so the count field does not move with it. */
+.stock-column {
+  width: 4.5rem;
+  white-space: nowrap;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sku-column {
+  width: 18rem;
+}
+.number-column {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.name-column {
   white-space: normal;
+}
+/* The set: plain text after the name while one set is listed, where every row's is the same, and
+   beside the SKU while every set is searched, where it tells the rows apart (`data-all-sets`). */
+.set-column {
+  width: 14rem;
+  color: var(--muted-foreground);
+}
+.set-beside {
+  display: none;
+}
+.products[data-all-sets] {
+  & .set-beside {
+    display: table-cell;
+    color: inherit;
+    font-weight: 500;
+  }
+  & .set-last {
+    display: none;
+  }
+}
+/* The row a count is typed into, so which product takes it is plain when a card number finds
+   several. More specific than the table's hover, which would otherwise draw over it. */
+.intake-screen .product-row:focus-within {
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  & > td:first-child {
+    box-shadow: inset 4px 0 0 var(--primary);
+  }
 }
 /* A row in its condition's color while the product has a SKU in it, as the React grid's
    getConditionColor (`info.main`, `success.main`, ...): Near Mint and a sealed product's plain.
-   The set and SKU badges take it as their tone, and the name as its color. */
+   The condition's badge takes it as its tone, and the name as its color. */
 .product-row {
   --row-tone: var(--foreground);
 }
@@ -62,26 +116,52 @@
 .product-row[data-missing] {
   --row-tone: var(--foreground);
 }
-.product-row .set-name,
-.product-row .sku-name {
+.product-row .condition-name {
   --kit-tone: var(--row-tone);
 }
 .product-row:not([data-missing], [data-condition="near-mint"], [data-condition=""]) .product-name {
   color: var(--row-tone);
 }
-/* No SKU in the condition chosen: the SKU's label is a warning, and the row has no count. */
-.product-row[data-missing] .sku-name {
+/* No SKU in the condition chosen: the condition's label is a warning, and the row has no count. */
+.product-row[data-missing] .condition-name {
   --kit-tone: var(--warning);
   opacity: 0.75;
   border-style: dashed;
 }
-.sku-name[data-printing*="reverse" i],
-.sku-name[data-printing*="holo" i] {
+/* What the SKU is, next to its count: the printing, the language unless English, the condition.
+   A badge with nothing to say (English, a sealed product's printing) is not drawn. */
+.sku {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  & > :empty {
+    display: none;
+  }
+}
+/* A printing other than Normal is filled, in the text's own color rather than a condition's, so
+   the row that is not the plain card stands out; Normal is plain text. */
+.product-row .printing {
+  --kit-tone-fill: var(--foreground);
+  --kit-tone-text: var(--background);
+}
+.product-row .printing:is([data-printing=""], :not([data-printing])) {
+  --kit-tone-fill: transparent;
+  --kit-tone-text: var(--muted-foreground);
+  padding-inline: 0;
+  font-weight: 400;
+}
+.printing[data-printing*="reverse" i],
+.printing[data-printing*="holo" i] {
   font-style: italic;
 }
-.sku-name[data-printing*="1st" i],
-.sku-name[data-printing*="first" i] {
+.printing[data-printing*="1st" i],
+.printing[data-printing*="first" i] {
   font-weight: 700;
+}
+.rarity {
+  margin-inline-start: var(--space-2);
+  color: var(--muted-foreground);
 }
 .count {
   display: inline-flex;
@@ -97,12 +177,17 @@
   }
 }
 .quantity {
-  width: 3.5rem;
+  width: 4rem;
   text-align: center;
-}
-.stock {
-  text-align: center;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+/* Nothing counted is quiet, so a count already there is seen before it is typed over (typing sets
+   the count, it does not add to it). The field being typed in is never quiet. */
+.quantity[value="0"]:not(:focus) {
+  color: var(--muted-foreground);
+  font-weight: 400;
 }
 /* The product's thumbnail, big enough to tell printings apart, and a link to its picture. The box
    keeps its size while the image loads, so the rows do not move. */

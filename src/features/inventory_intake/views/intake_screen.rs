@@ -111,6 +111,8 @@ pub struct IntakeListing {
     pub conditions: Vec<String>,
     /// What a sealed product's one SKU is called.
     pub unopened: String,
+    /// What a row calls the printing that has no name of its own.
+    pub normal: String,
     /// The sets the products are in, which each names by its place here.
     pub sets: Vec<String>,
     /// By name, A to Z.
@@ -123,10 +125,16 @@ pub struct ListedProduct {
     pub product: i32,
     /// `Pikachu - 025/165 - Common`, which a search matches when no card number does.
     pub name: String,
+    /// `Pikachu`, the name its row shows: the product's, without the card number it may end with.
+    pub product_name: String,
+    /// Its rarity, empty when it has none.
+    pub rarity: String,
     /// Its card number, which a search matches first; empty when it has none.
     pub number: String,
     /// Its printing, empty when Normal.
     pub printing: String,
+    /// Its language, empty when English.
+    pub language: String,
     /// Its set's place in [`IntakeListing::sets`].
     pub set: u32,
     /// Its SKU in each condition, in [`Condition::ALL`]'s order, 0 where it has none; a sealed
@@ -155,8 +163,11 @@ impl IntakeListing {
                 ListedProduct {
                     product: product.product_id,
                     name: product.display_name.clone(),
+                    product_name: name(product).to_owned(),
+                    rarity: product.rarity.clone(),
                     number: product.card_number.clone().unwrap_or_default(),
                     printing: printing(product).to_owned(),
+                    language: language(product).to_owned(),
                     set: set as u32,
                     skus: skus_of(product),
                     stock: skus_of(product)
@@ -180,6 +191,7 @@ impl IntakeListing {
             count_form: count_form_prefix(),
             conditions: Condition::ALL.iter().map(|c| c.name().to_owned()).collect(),
             unopened: UNOPENED.to_owned(),
+            normal: NORMAL.to_owned(),
             sets,
             products,
         }
@@ -415,18 +427,30 @@ pub fn IntakeScreen<'a>(
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
                     // No grid is shown without rows; the table stays for the script's refs.
-                    <table ref={table} hidden={listing.products.is_empty()}>
+                    // The columns are in the order a count is checked in: the copies in stock and
+                    // the count first, in the same place whatever is listed, then what tells apart
+                    // the rows a card number finds (the printing, the language, the condition), then
+                    // the product. The set
+                    // is the last column while one set is listed, and beside the SKU while every
+                    // set is searched (`data-all-sets`, which the script keeps in step).
+                    <table
+                        ref={table}
+                        class={Products}
+                        hidden={listing.products.is_empty()}
+                        data-all-sets={listing.scope == Scope::AllSets}
+                    >
                         // The script sorts in place: a hover on the sort link fetches nothing.
                         // Its link is the screen sorted the other way, which the script keeps in
                         // step with the set shown: a header row cannot be part of a set's answer,
                         // as markup parsed outside a table drops a row's tags.
                         <thead data-no-prefetch>
                             <tr>
-                                <th>"Image"</th>
-                                <th>"Set"</th>
-                                <th>"SKU"</th>
-                                <th>"In Stock"</th>
-                                <th>"Quantity"</th>
+                                <th class={ImageColumn}>"Image"</th>
+                                <th class={StockColumn}>"In Stock"</th>
+                                <th class={QuantityColumn}>"Quantity"</th>
+                                <th class={SkuColumn}>"SKU"</th>
+                                <th class={(SetColumn, SetBeside)}>"Set"</th>
+                                <th class={NumberColumn}>"Number"</th>
                                 <SortHeader
                                     label="Product Name"
                                     sort={Some(match order {
@@ -451,6 +475,7 @@ pub fn IntakeScreen<'a>(
                                     class={()}
                                     on:sort={js::sorted(event, target, keys)}
                                 />
+                                <th class={(SetColumn, SetLast)}>"Set"</th>
                             </tr>
                         </thead>
                         <tbody
@@ -466,16 +491,20 @@ pub fn IntakeScreen<'a>(
                                     missing={r.missing}
                                     picture={&r.picture}
                                     thumbnail={&r.thumbnail}
-                                    set={&r.set}
-                                    sku_name={&r.sku_name}
-                                    printing={&r.printing}
                                     form={&r.form}
                                     sku={r.sku}
                                     stock={&r.stock}
                                     count={r.count}
                                     label={&r.label}
                                     submit={SubmitKey::field(CountInput::FIELDS.submit)}
-                                    name={&r.name}
+                                    printing={&r.printing}
+                                    printing_name={&r.printing_name}
+                                    language={&r.language}
+                                    condition_name={&r.condition_name}
+                                    set={&r.set}
+                                    number={&r.number}
+                                    product_name={&r.product_name}
+                                    rarity={&r.rarity}
                                     selection={selection}
                                 />
                             }
@@ -490,16 +519,20 @@ pub fn IntakeScreen<'a>(
                         missing={blank.missing}
                         picture={&blank.picture}
                         thumbnail={&blank.thumbnail}
-                        set={&blank.set}
-                        sku_name={&blank.sku_name}
-                        printing={&blank.printing}
                         form={&blank.form}
                         sku={blank.sku}
                         stock={&blank.stock}
                         count={blank.count}
                         label={&blank.label}
                         submit={SubmitKey::template_field(CountInput::FIELDS.submit)}
-                        name={&blank.name}
+                        printing={&blank.printing}
+                        printing_name={&blank.printing_name}
+                        language={&blank.language}
+                        condition_name={&blank.condition_name}
+                        set={&blank.set}
+                        number={&blank.number}
+                        product_name={&blank.product_name}
+                        rarity={&blank.rarity}
                         selection={selection}
                     />
                 </template>
@@ -779,11 +812,34 @@ fn set_label(product: &Product) -> String {
     }
 }
 
+/// The printing with no name of its own, as TCGplayer calls it and as a row does.
+const NORMAL: &str = "Normal";
+
 /// The product's printing, or nothing for a Normal one.
 fn printing(product: &Product) -> &str {
     match product.variant.as_str() {
-        "Normal" => "",
+        NORMAL => "",
         variant => variant,
+    }
+}
+
+/// The product's name as its row shows it: without the card number TCGplayer ends it with where
+/// cards of a set share a name (`Alakazam ex - 065/165`), which the row shows in a cell of its own.
+fn name(product: &Product) -> &str {
+    product
+        .card_number
+        .as_deref()
+        .filter(|number| !number.is_empty())
+        .and_then(|number| product.product_name.strip_suffix(number))
+        .and_then(|name| name.strip_suffix(" - "))
+        .unwrap_or(&product.product_name)
+}
+
+/// The product's language, or nothing for English.
+fn language(product: &Product) -> &str {
+    match product.language.as_str() {
+        "English" => "",
+        language => language,
     }
 }
 
@@ -834,16 +890,24 @@ struct RowOf {
     missing: bool,
     picture: String,
     thumbnail: String,
-    set: String,
-    sku_name: String,
-    printing: String,
     form: String,
     sku: i32,
     /// The copies in stock, empty when there is no SKU or the stock cannot be known.
     stock: String,
     count: i32,
     label: String,
-    name: String,
+    /// Empty when Normal, which the stylesheet draws plainly.
+    printing: String,
+    /// `Reverse Holofoil`, or `Normal`; nothing for a sealed product with no printing to name.
+    printing_name: String,
+    /// Empty when English.
+    language: String,
+    /// `Near Mint`, or `Damaged unavailable` without a SKU in the condition chosen.
+    condition_name: String,
+    set: String,
+    number: String,
+    product_name: String,
+    rarity: String,
 }
 
 impl RowOf {
@@ -859,20 +923,12 @@ impl RowOf {
         let sku = product.sku(condition).unwrap_or(0);
         let named = shown.map_or(UNOPENED, Condition::name);
         let printing = printing(product);
-        let sku_name = match (sku, printing) {
-            (0, _) => t.intake_unavailable(named).to_string(),
-            (_, "") => named.to_owned(),
-            (_, printing) => format!("{named} {printing}"),
-        };
         RowOf {
             key: key_of(&skus, sku),
             condition: shown.map(|c| c.to_string()).unwrap_or_default(),
             missing: sku == 0,
             picture: picture(product.product_id),
             thumbnail: thumbnail(product.product_id),
-            set: set_label(product),
-            sku_name,
-            printing: printing.to_owned(),
             form: if sku == 0 {
                 String::new()
             } else {
@@ -883,7 +939,22 @@ impl RowOf {
                 .map_or_else(String::new, |n| t.number(i64::from(n)).to_string()),
             count: quantities.get(&sku).copied().unwrap_or(0),
             label: label(product, shown),
-            name: product.display_name.clone(),
+            printing: printing.to_owned(),
+            printing_name: match (printing, product.sealed) {
+                ("", true) => String::new(),
+                ("", false) => NORMAL.to_owned(),
+                (printing, _) => printing.to_owned(),
+            },
+            language: language(product).to_owned(),
+            condition_name: if sku == 0 {
+                t.intake_unavailable(named).to_string()
+            } else {
+                named.to_owned()
+            },
+            set: set_label(product),
+            number: product.card_number.clone().unwrap_or_default(),
+            product_name: name(product).to_owned(),
+            rarity: product.rarity.clone(),
         }
     }
 }
@@ -892,9 +963,16 @@ impl RowOf {
 /// server draws a page of them and the script makes the rest from the screen's `<template>`, so
 /// every part that changes from row to row is a hole. The row shows the product's thumbnail, a link
 /// to its picture, which the table's click handler opens in a dialog; the handler steps its count
-/// too. The set, the SKU and the name take the condition's color while the
-/// product has a SKU in it (`data-condition`); a row without one
-/// has its count form hidden (`data-missing`), which the keys skip.
+/// too.
+///
+/// Its cells are in the order a count is checked in. The count comes after the thumbnail and the
+/// copies in stock alone, neither of which changes the room it takes, so its field is in the same
+/// place whatever the row holds: the stock is what the count adds to, on its left. On its right is
+/// what tells apart the rows a card number finds: the printing (filled, unless Normal), the
+/// language unless English, and the condition. Then the card number, the name with its rarity, and the set, which has two
+/// cells of which the table shows one (`data-all-sets`). The condition and the name take the
+/// condition's color while the product has a SKU in it (`data-condition`); a row without one has
+/// its count form hidden (`data-missing`), which the keys skip.
 ///
 /// The count form is [`CountForm`]'s markup, which a count's answer replaces it with (a test
 /// holds them the same), with the SKU as a hole. Its submit key is not one: the page's rows draw
@@ -908,43 +986,32 @@ pub fn IntakeRow<'a>(
     missing: bool,
     picture: &'a str,
     thumbnail: &'a str,
-    set: &'a str,
-    sku_name: &'a str,
-    printing: &'a str,
     form: &'a str,
     sku: i32,
     stock: &'a str,
     count: i32,
     label: &'a str,
-    name: &'a str,
     submit: SubmitField,
+    printing: &'a str,
+    printing_name: &'a str,
+    language: &'a str,
+    condition_name: &'a str,
+    set: &'a str,
+    number: &'a str,
+    product_name: &'a str,
+    rarity: &'a str,
     selection: &'a Selection,
 ) -> impl Render {
     let c = CountInput::FIELDS;
     html! {
         <tr key={key} class={ProductRow} data-condition={condition} data-missing={missing}>
-            <td>
+            <td class={ImageColumn}>
                 <a href={picture} class={Thumbnail} tabindex="-1" aria-label="View picture">
                     <img src={thumbnail} alt="" loading="lazy" decoding="async">
                 </a>
             </td>
-            <td>
-                <span
-                    class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, SetName)}
-                >
-                    {set}
-                </span>
-            </td>
-            <td>
-                <span
-                    class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, SkuName)}
-                    data-printing={printing}
-                >
-                    {sku_name}
-                </span>
-            </td>
-            <td class={Stock}>{stock}</td>
-            <td>
+            <td class={StockColumn}>{stock}</td>
+            <td class={QuantityColumn}>
                 <form
                     id={form}
                     class={Count}
@@ -984,9 +1051,33 @@ pub fn IntakeRow<'a>(
                     {submit}
                 </form>
             </td>
-            <td class={Name}>
-                <span class={ProductName}>{name}</span>
+            <td class={SkuColumn}>
+                <div class={Sku}>
+                    <span
+                        class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Solid }, Printing)}
+                        data-printing={printing}
+                    >
+                        {printing_name}
+                    </span>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                    >
+                        {language}
+                    </span>
+                    <span
+                        class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, ConditionName)}
+                    >
+                        {condition_name}
+                    </span>
+                </div>
             </td>
+            <td class={(SetColumn, SetBeside)}>{set}</td>
+            <td class={NumberColumn}>{number}</td>
+            <td class={NameColumn}>
+                <span class={ProductName}>{product_name}</span>
+                <span class={Rarity}>{rarity}</span>
+            </td>
+            <td class={(SetColumn, SetLast)}>{set}</td>
         </tr>
     }
 }
@@ -1106,6 +1197,9 @@ mod tests {
         Product {
             product_id: 1,
             display_name: "Pikachu - 58/102 - Common".into(),
+            product_name: "Pikachu".into(),
+            rarity: "Common".into(),
+            language: "English".into(),
             set_name: "Base Set".into(),
             release_year: Some("1999".into()),
             card_number: Some("58/102".into()),
@@ -1126,16 +1220,20 @@ mod tests {
             missing: row.missing,
             picture: &row.picture,
             thumbnail: &row.thumbnail,
-            set: &row.set,
-            sku_name: &row.sku_name,
-            printing: &row.printing,
             form: &row.form,
             sku: row.sku,
             stock: &row.stock,
             count: row.count,
             label: &row.label,
-            name: &row.name,
             submit,
+            printing: &row.printing,
+            printing_name: &row.printing_name,
+            language: &row.language,
+            condition_name: &row.condition_name,
+            set: &row.set,
+            number: &row.number,
+            product_name: &row.product_name,
+            rarity: &row.rarity,
             selection,
         }
         .to_html()
@@ -1160,7 +1258,11 @@ mod tests {
         assert_eq!((lp.key, lp.sku, lp.count), (11, 11, 4));
         assert!(html.contains("data-condition=\"lightly-played\""), "{html}");
         assert!(!html.contains("data-missing"), "{html}");
-        assert!(html.contains(">Lightly Played Reverse Holofoil<"), "{html}");
+        assert!(
+            html.contains("data-printing=\"Reverse Holofoil\">Reverse Holofoil<"),
+            "{html}"
+        );
+        assert!(html.contains(">Lightly Played<"), "{html}");
         assert!(
             html.contains(
                 "aria-label=\"Pikachu - 58/102 - Common Reverse Holofoil Lightly Played quantity\""
@@ -1178,6 +1280,80 @@ mod tests {
         assert!(html.contains(" hidden data-patch"), "{html}");
         assert!(html.contains(">Damaged unavailable<"), "{html}");
         assert_eq!(key_of(&skus_of(&product), 0), -10);
+    }
+
+    /// The count comes before everything a row says about its product but the thumbnail and the
+    /// copies in stock, so its field does not move with what is listed, and what tells apart the
+    /// rows a card number finds is next to it: the printing, the language unless English, then the
+    /// condition. The card number, the name and its rarity follow, each in a cell of its own, and
+    /// the set is there twice, for the table to show beside the SKU or last.
+    #[test]
+    fn a_row_puts_the_count_before_what_tells_the_rows_apart() {
+        let t = Msg::default();
+        let counts = HashMap::new();
+        let selection = Selection::default();
+        let japanese = Product {
+            language: "Japanese".into(),
+            ..card()
+        };
+        let stock = HashMap::from([(10, 7)]);
+        let row = RowOf::new(&japanese, Condition::NearMint, &counts, Some(&stock), &t);
+        let html = drawn(&row, &selection);
+        let at = |part: &str| html.find(part).unwrap_or_else(|| panic!("{part}: {html}"));
+        let order = [
+            at("<img"),
+            at(">7</td>"),
+            at("<form"),
+            at(">Reverse Holofoil<"),
+            at(">Japanese<"),
+            at(">Near Mint<"),
+            at(">Base Set - 1999<"),
+            at(">58/102<"),
+            at(">Pikachu<"),
+            at(">Common<"),
+            html.rfind(">Base Set - 1999<").unwrap(),
+        ];
+        assert!(order.is_sorted_by(|a, b| a < b), "{order:?}: {html}");
+
+        // A Normal printing is named, with nothing for the stylesheet to fill; English is not.
+        let normal = Product {
+            variant: "Normal".into(),
+            ..card()
+        };
+        let row = RowOf::new(&normal, Condition::NearMint, &counts, None, &t);
+        assert_eq!(
+            (
+                row.printing.as_str(),
+                row.printing_name.as_str(),
+                row.language.as_str()
+            ),
+            ("", "Normal", "")
+        );
+        // A name that ends with the card number is shown without it, and no other is changed.
+        let numbered = |product_name: &str| {
+            let product = Product {
+                product_name: product_name.into(),
+                ..card()
+            };
+            RowOf::new(&product, Condition::NearMint, &counts, None, &t).product_name
+        };
+        assert_eq!(numbered("Pikachu - 58/102"), "Pikachu");
+        assert_eq!(
+            numbered("Pikachu - 58/102 (Cosmos Holo)"),
+            "Pikachu - 58/102 (Cosmos Holo)"
+        );
+        assert_eq!(numbered("58/102"), "58/102");
+        // A sealed product has no printing to name.
+        let sealed = Product {
+            sealed: true,
+            unopened: Some(12),
+            ..normal
+        };
+        let row = RowOf::new(&sealed, Condition::NearMint, &counts, None, &t);
+        assert_eq!(
+            (row.printing_name.as_str(), row.condition_name.as_str()),
+            ("", "Unopened")
+        );
     }
 
     /// A count's answer replaces a row's count form with `CountForm`, so the row draws the same
@@ -1419,7 +1595,7 @@ mod tests {
             import { registerHooks } from "node:module";
             const stubs = {
                 corten: "export const keep = (init) => (globalThis.kept ??= init());",
-                "corten/views": "export class IntakeRow {} export const rows = () => Object.assign([], { replace(next) { globalThis.drawn = next.map((r) => r.sku); } });",
+                "corten/views": "export class IntakeRow {} export const rows = () => Object.assign([], { replace(next) { globalThis.rows = next; globalThis.drawn = next.map((r) => r.sku); } });",
             };
             registerHooks({
                 resolve(specifier, context, next) {
@@ -1443,22 +1619,36 @@ mod tests {
                 size: { value: "100", name: "rows" },
                 sort: { value: "name-down", name: "sort", disabled: true },
                 search: { value: "", name: "search" },
-                rows: {}, template: {}, table: {}, none: {}, paging: {}, range: {}, previous: {}, next: {},
-                shown: () => "", number: String, quantity: () => "", unavailable: () => "",
+                rows: {}, template: {}, none: {}, paging: {}, range: {}, previous: {}, next: {},
+                table: { toggleAttribute(name, on) { this[name] = on; } },
+                shown: () => "", number: String, quantity: () => "", unavailable: ({ condition }) => condition + " unavailable",
             };
-            const listing = (query, skus) => ({
+            const printings = ["", "Reverse Holofoil"];
+            const listing = (query, skus, searches = true) => ({
                 address: at(query).slice("http://localhost".length),
-                searches: true, page: 1, descending: false, page_field: "page", picture: ["", ""], thumbnail: ["", ""],
-                count_form: "count-", conditions: ["Near Mint"], unopened: "Unopened", sets: ["Base Set"],
-                products: skus.map((sku, i) => ({ product: i, name: "P" + i, number: "", printing: "", set: 0, skus: [sku, 0], stock: [1, null] })),
+                searches, page: 1, descending: false, page_field: "page", picture: ["", ""], thumbnail: ["", ""],
+                count_form: "count-", conditions: ["Near Mint"], unopened: "Unopened", normal: "Normal", sets: ["Base Set"],
+                products: skus.map((sku, i) => ({
+                    product: i, name: "P" + i + " - 58/102 - Common", product_name: "P" + i, rarity: "Common", number: "58/102",
+                    printing: printings[i], language: i ? "Japanese" : "", set: 0, skus: [sku, 0], stock: [1, null],
+                })),
             });
+            const said = (r) => [r.printing, r.printing_name, r.language, r.condition_name, r.set, r.number, r.product_name, r.rarity].join("|");
             start(k, false);
             listed(listing("line=3&set=1", [10]));
             console.log(pushed.length, globalThis.drawn ?? "none");
             listed(listing("line=3&set=2", [20, 21]));
             console.log(pushed.length, globalThis.drawn.join(","), new URL(location.href).search);
+            console.log(globalThis.rows.map(said).join(" "), k.table["data-all-sets"]);
             listed(listing("line=3&set=2", [20, 21]));
             console.log(pushed.length);
+            // A product with no SKU in the condition chosen, and one sealed, with every set searched.
+            listed(listing("line=3&set=2", [0, 30], false));
+            console.log(globalThis.rows.map(said).join(" "), k.table["data-all-sets"]);
+            const sealed = listing("line=3&set=2", [40], false);
+            sealed.products[0].skus = [40];
+            listed(sealed);
+            console.log(said(globalThis.rows[0]));
         "#;
         let out = std::process::Command::new("node")
             .args(["--input-type=module", "-e", script])
@@ -1479,7 +1669,11 @@ mod tests {
             [
                 "0 none",
                 "1 20,21 ?line=3&set=2&condition=near-mint&rows=100",
+                // What each row says, as `RowOf::new` fills it, and one set is listed.
+                "|Normal||Near Mint|Base Set|58/102|P0|Common Reverse Holofoil|Reverse Holofoil|Japanese|Near Mint|Base Set|58/102|P1|Common false",
                 "1",
+                "|Normal||Near Mint unavailable|Base Set|58/102|P0|Common Reverse Holofoil|Reverse Holofoil|Japanese|Near Mint|Base Set|58/102|P1|Common true",
+                "|||Unopened|Base Set|58/102|P0|Common",
             ]
         );
     }

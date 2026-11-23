@@ -360,6 +360,11 @@ pub async fn counted(
 pub struct Product {
     pub product_id: i32,
     pub display_name: String,
+    /// The product's own name, which `display_name` starts with.
+    pub product_name: String,
+    /// Empty when it has none.
+    pub rarity: String,
+    pub language: String,
     pub set_name: String,
     pub release_year: Option<String>,
     pub card_number: Option<String>,
@@ -431,6 +436,9 @@ pub fn products(skus: Vec<Sku>, shown: &Shown) -> Vec<Product> {
         let row = rows.entry(key).or_insert_with(|| Product {
             product_id: sku.product_id,
             display_name: display_name(&sku),
+            product_name: sku.product_name.clone(),
+            rarity: sku.rarity_name.clone().unwrap_or_default(),
+            language: sku.language.clone(),
             set_name: sku.set_name.clone(),
             release_year: sku
                 .release_date
@@ -738,6 +746,9 @@ mod tests {
             .map(|&(id, name, number)| Product {
                 product_id: id,
                 display_name: name.into(),
+                product_name: name.into(),
+                rarity: String::new(),
+                language: "English".into(),
                 set_name: "Set".into(),
                 release_year: None,
                 card_number: number.map(Into::into),
