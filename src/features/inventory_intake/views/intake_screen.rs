@@ -1,11 +1,12 @@
 use std::{collections::HashMap, time::Duration};
 
 use corten::{Route, ToJson, form::SubmitField, prelude::*, script::ElementId};
+use corten_ui::{Choice, ComboBox, Picker};
 
 use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
     features::inventory_intake::{
-        catalog::{Condition, LANGUAGES, PageSize, Product, ProductOrder, ProductType, Scope},
+        catalog::{Condition, LANGUAGES, PageSize, Product, ProductOrder, ProductType, Scope, Set},
         page::{CountInput, Listing, Screen},
         queue::{self, Batches, QueueInput},
         url::{self, Selection},
@@ -19,6 +20,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardPanel, CardSize},
         checkbox::Checkbox,
+        combobox::Combobox,
         dialog::{Dialog, DialogFooter, DialogSize},
         input::Input,
         pagination::Pagination,
@@ -36,8 +38,13 @@ corten::script::script!(pub mod set_search = "set_search.js");
 struct FiltersId;
 #[derive(Id)]
 struct ConditionSelectId;
+/// The set picker's control, which the Set label names: its select, and its text once the
+/// script runs.
 #[derive(Id)]
-struct SetSelectId;
+struct SetPickId;
+/// The sets to pick from: a set's answer replaces them.
+#[derive(Id)]
+struct SetChoicesId;
 #[derive(Id)]
 struct SearchId;
 /// What the search looks in: this set, or every set's card numbers.
@@ -315,11 +322,11 @@ pub fn IntakeScreen<'a>(
                         }
                     </select>
                 </label>
-                // The ref is the label's: a set's answer replaces the select inside it.
-                <label ref={set}>
-                    "Set"
-                    <SetSelect listing={listing} />
-                </label>
+                // The ref is the field's: a set's answer replaces the picker inside it.
+                <div ref={set} class={SetField}>
+                    <label for={SetPickId}>"Set"</label>
+                    <SetPicker listing={listing} />
+                </div>
                 <Switch label="All sets">
                     <input
                         type="checkbox"
@@ -620,7 +627,7 @@ fn searched(selection: &Selection) -> bool {
 #[component]
 pub fn ListingParts<'a>(listing: &'a Listing) -> impl Patch {
     html! {
-        <SetSelect listing={listing} />
+        <SetPicker listing={listing} />
         <SearchLabel scope={listing.scope} />
         <MoreFilters selection={&listing.selection} />
 
@@ -629,22 +636,18 @@ pub fn ListingParts<'a>(listing: &'a Listing) -> impl Patch {
     }
 }
 
-/// The product line's sets, the one listed chosen; none to choose while every set is searched.
+/// The product line's sets, the one listed picked: typing lists the sets whose label holds the
+/// text anywhere, so a set whose name is not known is found by its release year. Without the
+/// script it is a select. None to pick while every set is searched, or when the line has none.
 #[component]
-fn SetSelect<'a>(listing: &'a Listing) -> impl Patch {
+fn SetPicker<'a>(listing: &'a Listing) -> impl Patch {
     html! {
-        <select
-            class={Select {}}
-            id={SetSelectId}
-            name={Selection::FIELDS.set}
-            disabled={listing.scope == Scope::AllSets}
-        >
-            for s in &listing.sets {
-                <option value={s.id} selected={Some(s.id) == listing.set}>
-                    {s.label()}
-                </option>
-            }
-        </select>
+        let labels: Vec<String> = listing.sets.iter().map(Set::label).collect();
+        let options: Vec<Choice<i32>> = listing.sets.iter().zip(&labels).map(|(set, label)| Choice::new(set.id, label)).collect();
+        let picker = Picker { value: listing.set, disabled: listing.scope == Scope::AllSets || options.is_empty(), ..Picker::new(SetPickId, Selection::FIELDS.set, "Choose a set", "No matching sets", &options) };
+        <div id={SetChoicesId}>
+            <Combobox><ComboBox field={&picker} /></Combobox>
+        </div>
     }
 }
 
@@ -1180,8 +1183,8 @@ mod tests {
 
     use super::{
         CountForm, Counted, IntakeListing, IntakeRow, ListedProductsId, ListingParts,
-        MoreFiltersId, NothingListedId, ProductPages, RowOf, SearchLabelId, SetSelectId,
-        count_form, count_form_prefix, key_of, skus_of,
+        MoreFiltersId, NothingListedId, ProductPages, RowOf, SearchLabelId, SetChoicesId,
+        SetPickId, count_form, count_form_prefix, key_of, skus_of,
     };
     use crate::{
         features::inventory_intake::{
@@ -1417,8 +1420,10 @@ mod tests {
     /// Page Up and Page Down step the set, empty the search, leave focus in it with its text
     /// selected and send the filters (whose `data-keep-place` keeps that focus through the
     /// navigation), from the search or a count field alike: never the old search, never a count
-    /// field. With every set searched there is no set to step. The handler runs in node with
-    /// stand-ins for the page and the runtime (the test runs in the crate's directory).
+    /// field. The picker's first option is no set, so the keys step past it, and from it to the
+    /// first set or the last. With every set searched there is no set to step. The handler runs
+    /// in node with stand-ins for the page and the runtime (the test runs in the crate's
+    /// directory).
     #[test]
     fn page_up_and_down_start_a_new_search_in_the_next_set() {
         let script = r#"
@@ -1453,9 +1458,11 @@ mod tests {
             const quantity = new HTMLInputElement({ sku: "10" });
             screen.kids = [search, quantity];
             const sent = [];
+            // No set, then three sets, the first picked.
+            const sets = { disabled: false, options: { length: 4 }, selectedIndex: 1 };
             const k = {
                 search,
-                set: { control: { disabled: false, options: { length: 3 }, selectedIndex: 0 } },
+                set: { querySelector: () => sets },
                 filters: { requestSubmit: (...by) => sent.push(by) },
             };
             const press = (key, target) => {
@@ -1464,13 +1471,19 @@ mod tests {
                 search.selected = false;
                 document.activeElement = target;
                 keys(event, screen, k);
-                return [event.defaultPrevented, k.set.control.selectedIndex, search.value, document.activeElement === search, search.selected, sent.length, sent.at(-1)?.length].join(" ");
+                return [event.defaultPrevented, sets.selectedIndex, search.value, document.activeElement === search, search.selected, sent.length, sent.at(-1)?.length].join(" ");
             };
             console.log(press("PageDown", search));
             console.log(press("PageDown", quantity));
+            console.log(press("PageDown", quantity));
             console.log(press("PageUp", quantity));
             console.log(press("PageUp", search));
-            k.set.control.disabled = true;
+            console.log(press("PageUp", search));
+            sets.selectedIndex = 0;
+            console.log(press("PageDown", search));
+            sets.selectedIndex = 0;
+            console.log(press("PageUp", search));
+            sets.disabled = true;
             console.log(press("PageDown", search));
         "#;
         let out = std::process::Command::new("node")
@@ -1492,18 +1505,94 @@ mod tests {
             [
                 // Prevented, the set chosen, the search, focus in it, its text selected, the
                 // filters sent so far, and with no submitter.
-                "true 1  true true 1 0",
-                "true 2  true true 2 0",
+                "true 2  true true 1 0",
+                "true 3  true true 2 0",
+                // Past the last set is the first, and before the first the last.
                 "true 1  true true 3 0",
-                "true 0  true true 4 0",
+                "true 3  true true 4 0",
+                "true 2  true true 5 0",
+                "true 1  true true 6 0",
+                // No set picked: the first set down, the last up.
+                "true 1  true true 7 0",
+                "true 3  true true 8 0",
                 // Every set searched: Page Down is the browser's, and the search is left as it is.
-                "false 0 58 true false 4 0",
+                "false 3 58 true false 8 0",
+            ]
+        );
+    }
+
+    /// A set picked in the picker is listed as Page Down lists the next: the search emptied, with
+    /// focus, and the filters sent. The picker emptied and left picks none, so the set listed is
+    /// asked for again and the search is left as it is. The picker's text changing is no filter,
+    /// and nothing is sent for it. In node, with stand-ins for the page and the runtime, as above.
+    #[test]
+    fn a_set_picked_is_listed_to_search_afresh() {
+        let script = r#"
+            import { registerHooks } from "node:module";
+            const stubs = {
+                corten: "export const keep = (init) => (globalThis.kept ??= init());",
+                "corten/views": "export class IntakeRow {} export const rows = () => { throw new Error('no rows'); };",
+            };
+            registerHooks({
+                resolve(specifier, context, next) {
+                    const code = stubs[specifier];
+                    if (code === undefined) return next(specifier, context);
+                    return { url: "data:text/javascript," + encodeURIComponent(code), shortCircuit: true };
+                },
+            });
+            class HTMLInputElement {
+                constructor(role) { this.role = role; this.value = "58"; this.selected = false; }
+                getAttribute(name) { return name === "role" ? this.role : null; }
+                focus() { document.activeElement = this; }
+                select() { this.selected = true; }
+            }
+            Object.assign(globalThis, { HTMLInputElement, document: { activeElement: null } });
+            const { filtered } = await import("./src/features/inventory_intake/views/intake_screen.js");
+            const search = new HTMLInputElement(null);
+            const text = new HTMLInputElement("combobox");
+            const sent = [];
+            const sets = { value: "2", options: [{ value: "", defaultSelected: false }, { value: "1", defaultSelected: true }, { value: "2", defaultSelected: false }] };
+            const k = { search, set: { querySelector: () => sets }, filters: { requestSubmit: (...by) => sent.push(by) } };
+            const changed = (target) => {
+                search.value = "58";
+                search.selected = false;
+                document.activeElement = text;
+                filtered({ target }, k);
+                return [sets.value, search.value, document.activeElement === search, search.selected, sent.length].join(" ");
+            };
+            console.log(changed(sets));
+            sets.value = "";
+            console.log(changed(sets));
+            console.log(changed(text));
+        "#;
+        let out = std::process::Command::new("node")
+            .args(["--input-type=module", "-e", script])
+            .output()
+            .expect("node runs");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let lines: Vec<String> = String::from_utf8(out.stdout)
+            .unwrap()
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                // The set the select holds, the search, focus in it, its text selected, and the
+                // filters sent so far.
+                "2  true true 1",
+                "1 58 false false 2",
+                "1 58 false false 2",
             ]
         );
     }
 
     /// A set's answer is the parts of the screen that change with the filters, each with the id the
-    /// page draws it with, so each replaces its own: the set chosen among the line's, and its
+    /// page draws it with, so each replaces its own: the set picked among the line's, and its
     /// products for the script, with the address that lists them. It holds none of the screen's
     /// refs, which a part drawn outside the screen cannot name, and no table row, which the
     /// browser would parse apart outside a table.
@@ -1535,8 +1624,9 @@ mod tests {
             stock: Some(HashMap::from([(11, 3)])),
         };
         let html = ListingParts { listing: &listing }.to_html();
-        let ids: [ElementId; 5] = [
-            ElementId::of(&SetSelectId),
+        let ids: [ElementId; 6] = [
+            ElementId::of(&SetChoicesId),
+            ElementId::of(&SetPickId),
             ElementId::of(&SearchLabelId),
             ElementId::of(&MoreFiltersId),
             ElementId::of(&NothingListedId),
@@ -1550,11 +1640,24 @@ mod tests {
                 "{id}: {html}"
             );
         }
-        assert!(
-            !html.contains("data-ref") && !html.contains("<tr"),
+        // The only refs are the set picker's own parts, which its script finds under its root.
+        let refs: Vec<&str> = html
+            .split("data-ref=\"")
+            .skip(1)
+            .map(|rest| rest.split_once('"').unwrap().0)
+            .collect();
+        assert_eq!(
+            refs,
+            ["select", "input", "popup", "list", "empty"],
             "{html}"
         );
+        assert!(!html.contains("<tr"), "{html}");
+        // The picker shows the set listed, in its select and in its text.
         assert!(html.contains(r#"<option value="2" selected>"#), "{html}");
+        assert!(
+            html.contains(r#"role="combobox""#) && html.contains(r#"value="Jungle""#),
+            "{html}"
+        );
         assert!(!html.contains(r#"<option value="1" selected>"#), "{html}");
 
         let listed = IntakeListing::of(&listing);

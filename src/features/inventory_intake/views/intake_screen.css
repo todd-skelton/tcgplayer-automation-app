@@ -16,6 +16,14 @@
     gap: var(--space-1);
   }
 }
+/* The Set label over its picker, as a label holds its control, and wide enough to read a set's
+   label in: the picker's text is as wide as its field, where a select was as wide as its longest
+   option. */
+.set-field {
+  display: grid;
+  gap: var(--space-1);
+  flex: 0 1 24rem;
+}
 .condition-select {
   min-width: 11rem;
 }
