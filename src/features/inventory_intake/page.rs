@@ -330,8 +330,8 @@ pub async fn queue_batch(
 ) -> HtmlResult {
     let selection = at.selection;
     let input = input.filled();
-    let cost = match input.read_cost() {
-        Ok(cost) => cost,
+    let handoff = match input.read(chrono::Utc::now().date_naive()) {
+        Ok(handoff) => handoff,
         Err(errors) => {
             return refuse(&req, &db, &selection, &input, &errors, None).await;
         }
@@ -358,7 +358,7 @@ pub async fn queue_batch(
         return refuse(&req, &db, &selection, &input, &errors, Some(&quantities)).await;
     };
     let expected = queue::snapshot(&quantities);
-    let request = Queue::entered(workflow, &cost, &expected, &input.seller);
+    let request = Queue::entered(workflow, &handoff, &expected, &input.seller);
     let queued = match queue::queue(&db, key.as_str(), &request).await {
         Ok(queued) => queued,
         Err(NotQueued::Refused(why, message)) => {
@@ -374,7 +374,7 @@ pub async fn queue_batch(
     let notice = format!(
         "Batch {} queued with {}. You can keep adding inventory.",
         queued.batch_number,
-        cost.described()
+        handoff.described()
     );
     if req.mode != Mode::Action {
         return req.redirect_with_notice(&url::InventoryManager { selection }, notice);

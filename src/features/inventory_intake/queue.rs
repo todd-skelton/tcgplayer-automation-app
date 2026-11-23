@@ -9,6 +9,7 @@
 //! queues.
 use std::collections::HashMap;
 
+use chrono::NaiveDate;
 use corten::{Refusal, UrlValue, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -133,9 +134,27 @@ pub enum Cost {
     Purchase {
         reference: String,
         total: String,
-        date: Option<String>,
         estimated: bool,
     },
+}
+
+/// What the queue bar says of a handoff: its cost, and the day its lot was bought when that was
+/// entered, which an estimate prices its cards at instead of the day they were counted.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Handoff {
+    pub cost: Cost,
+    pub purchased_on: Option<NaiveDate>,
+}
+
+impl Handoff {
+    /// How the success message names it: `an estimate at 60% of market less $0.50 per card from
+    /// the market on 2026-03-14`.
+    pub fn described(&self) -> String {
+        match (&self.cost, self.purchased_on) {
+            (Cost::Purchase { .. }, _) | (_, None) => self.cost.described(),
+            (_, Some(day)) => format!("{} from the market on {day}", self.cost.described()),
+        }
+    }
 }
 
 impl Cost {
@@ -174,8 +193,8 @@ impl QueueInput {
         self
     }
 
-    /// The form for the batch after this one: a rate describes the whole lot, so it stays; a
-    /// purchase total belongs to one handoff, so it clears.
+    /// The form for the batch after this one: a rate and a purchase date describe the whole lot,
+    /// so they stay; a purchase total belongs to one handoff, so it clears.
     pub fn after_queue(&self) -> Self {
         QueueInput {
             cost: match self.cost {
@@ -184,15 +203,27 @@ impl QueueInput {
             },
             market_percent: self.market_percent.clone(),
             per_card_deduction: self.per_card_deduction.clone(),
+            purchase_date: self.purchase_date.clone(),
             ..QueueInput::default()
         }
         .filled()
     }
 
-    /// The cost the form asks for, or each field that is wrong.
-    pub fn read_cost(&self) -> Result<Cost, Errors> {
+    /// The handoff the form asks for, or each field that is wrong. A purchase date after `today`
+    /// is refused.
+    pub fn read(&self, today: NaiveDate) -> Result<Handoff, Errors> {
         let f = QueueInput::FIELDS;
         let mut errors = Errors::new();
+        let purchased_on = match calendar_date(Some(&self.purchase_date)) {
+            Ok(text) => text.and_then(|t| NaiveDate::parse_from_str(&t, "%Y-%m-%d").ok()),
+            Err(message) => {
+                errors.add(f.purchase_date, message);
+                None
+            }
+        };
+        if purchased_on.is_some_and(|day| day > today) {
+            errors.add(f.purchase_date, "Purchase date cannot be after today.");
+        }
         let cost = match self.cost {
             CostMethod::Estimate => Cost::Estimate,
             CostMethod::CostRate => {
@@ -224,16 +255,14 @@ impl QueueInput {
                 if let Err(message) = dollars_to_cents(total, "Purchase total") {
                     errors.add(f.purchase_total, message);
                 }
-                let date = self.purchase_date.trim();
                 Cost::Purchase {
                     reference: reference.to_owned(),
                     total: total.to_owned(),
-                    date: (!date.is_empty()).then(|| date.to_owned()),
                     estimated: self.purchase_estimated,
                 }
             }
         };
-        errors.into_result(cost)
+        errors.into_result(Handoff { cost, purchased_on })
     }
 }
 
@@ -382,20 +411,22 @@ pub fn cost_rate(fields: &Map<String, Value>) -> Result<CostRate, String> {
 
 /// What a queue request carries besides its id: what queuing does, the cost's fields as sent
 /// (an entered purchase total, or a rate; `purchaseCost` and `estimatedCostRate`, read
-/// only once the queue is checked), and the counts and seller the screen showed.
+/// only once the queue is checked), the day the lot was bought, and the counts and seller the
+/// screen showed.
 pub struct Queue<'a> {
     pub workflow: Workflow,
     pub purchase_cost: Option<Map<String, Value>>,
     pub estimated_cost_rate: Option<Map<String, Value>>,
+    pub purchased_on: Option<NaiveDate>,
     pub expected: &'a [IntakeQuantity],
     pub seller_key: &'a str,
 }
 
 impl<'a> Queue<'a> {
-    /// The request the queue bar's form makes for `cost`.
+    /// The request the queue bar's form makes for `handoff`.
     pub fn entered(
         workflow: Workflow,
-        cost: &Cost,
+        handoff: &Handoff,
         expected: &'a [IntakeQuantity],
         seller_key: &'a str,
     ) -> Self {
@@ -403,7 +434,7 @@ impl<'a> Queue<'a> {
             Value::Object(fields) => fields,
             _ => unreachable!("a cost's fields are an object"),
         };
-        let (purchase_cost, estimated_cost_rate) = match cost {
+        let (purchase_cost, estimated_cost_rate) = match &handoff.cost {
             Cost::Estimate => (None, None),
             Cost::Rate(rate) => (
                 None,
@@ -415,7 +446,6 @@ impl<'a> Queue<'a> {
             Cost::Purchase {
                 reference,
                 total,
-                date,
                 estimated,
             } => {
                 let mut fields = object(serde_json::json!({
@@ -425,8 +455,8 @@ impl<'a> Queue<'a> {
                     "allocationRule": "quantity",
                     "currency": "USD",
                 }));
-                if let Some(date) = date {
-                    fields.insert("purchasedAt".into(), date.as_str().into());
+                if let Some(day) = handoff.purchased_on {
+                    fields.insert("purchasedAt".into(), day.to_string().into());
                 }
                 (Some(fields), None)
             }
@@ -435,6 +465,7 @@ impl<'a> Queue<'a> {
             workflow,
             purchase_cost,
             estimated_cost_rate,
+            purchased_on: handoff.purchased_on,
             expected,
             seller_key,
         }
@@ -446,8 +477,8 @@ impl<'a> Queue<'a> {
 }
 
 /// What a request asked for, as it is saved (`request_json`) and compared with a repeat
-/// of it: what queuing does, the cost as sent, the rate only when one was, and the counts in SKU
-/// order with the seller the screen showed.
+/// of it: what queuing does, the cost as sent, the rate and the purchase date only when they were,
+/// and the counts in SKU order with the seller the screen showed.
 fn details(queue: &Queue<'_>) -> Value {
     let mut expected = queue.expected.to_vec();
     expected.sort_by_key(|i| i.sku);
@@ -459,6 +490,9 @@ fn details(queue: &Queue<'_>) -> Value {
     });
     if let Some(rate) = &queue.estimated_cost_rate {
         details["estimatedCostRate"] = Value::Object(rate.clone());
+    }
+    if let Some(day) = queue.purchased_on {
+        details["purchaseDate"] = day.to_string().into();
     }
     details
 }
@@ -642,6 +676,9 @@ pub async fn queued(
     if let Some(rate) = rate {
         estimate::save_rate(&mut *conn, batch_number, rate).await?;
     }
+    if let Some(day) = queue.purchased_on {
+        estimate::save_purchase_date(&mut *conn, batch_number, day).await?;
+    }
     if let Some(mut cost) = purchase {
         cost.batch_numbers = vec![batch_number];
         purchase_cost::record(conn, &cost)
@@ -737,6 +774,9 @@ pub struct Run {
     pub has_entered_cost: bool,
     /// The rate its estimate uses; none is the default.
     pub cost_rate: Option<CostRate>,
+    /// The day its lot was bought, `2026-03-14`, when that was entered.
+    #[serde(default)]
+    pub purchased_on: Option<String>,
 }
 
 /// Where a queued batch is.
@@ -808,10 +848,13 @@ impl Run {
         if self.has_entered_cost {
             return format!("Cost {} entered", dollars(recorded.unwrap_or(0)));
         }
-        let rate = match self.cost_rate {
+        let mut rate = match self.cost_rate {
             Some(rate) => rate.describe(),
             None => format!("the default {}", CostRate::DEFAULT.describe()),
         };
+        if let Some(day) = &self.purchased_on {
+            rate = format!("{rate} from the market on {day}");
+        }
         match recorded {
             Some(cents) if self.uncosted_lot_count == 0 => {
                 format!("Cost {} estimated at {rate}", dollars(cents))
@@ -870,10 +913,12 @@ const RUNS: &str = r#"SELECT to_jsonb(run) FROM (SELECT r.batch_number AS "batch
     cost.cents AS "recordedCostCents", cost.uncosted AS "uncostedLotCount", cost.entered AS "hasEnteredCost",
     CASE WHEN rate.batch_number IS NOT NULL THEN jsonb_build_object(
       'marketRate', rate.market_rate::float8,
-      'perUnitDeductionCents', rate.per_unit_deduction_cents) END AS "costRate"
+      'perUnitDeductionCents', rate.per_unit_deduction_cents) END AS "costRate",
+    to_char(purchase.purchased_on, 'YYYY-MM-DD') AS "purchasedOn"
     FROM (SELECT * FROM inventory_intake_runs ORDER BY created_at DESC LIMIT 25) r
     JOIN inventory_batches b ON b.batch_number = r.batch_number
     LEFT JOIN inventory_batch_estimated_cost_rates rate ON rate.batch_number = r.batch_number
+    LEFT JOIN inventory_batch_purchase_dates purchase ON purchase.batch_number = r.batch_number
     CROSS JOIN LATERAL (SELECT SUM(allocation.allocated_amount_cents)::float8 AS cents,
       COUNT(*) FILTER (WHERE ownership.receipt_id IS NULL)::int AS uncosted,
       COALESCE(bool_or(series.purchase_reference <> 'estimated:batch-' || r.batch_number), FALSE) AS entered
@@ -1020,14 +1065,19 @@ pub(crate) mod tests {
         assert_eq!(dollars(-20), "-$0.20");
     }
 
+    fn day(text: &str) -> NaiveDate {
+        NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("a test day")
+    }
+
     #[test]
     fn a_purchase_total_needs_a_reference_and_an_amount() {
+        let today = day("2026-11-22");
         let input = QueueInput {
             cost: CostMethod::PurchaseTotal,
             purchase_total: "abc".into(),
             ..QueueInput::new()
         };
-        let errors = input.read_cost().unwrap_err();
+        let errors = input.read(today).unwrap_err();
         let f = QueueInput::FIELDS;
         assert!(errors.has(f.purchase_reference) && errors.has(f.purchase_total));
         let input = QueueInput {
@@ -1037,25 +1087,58 @@ pub(crate) mod tests {
             ..QueueInput::new()
         };
         assert_eq!(
-            input.read_cost(),
-            Ok(Cost::Purchase {
-                reference: "Lot 7".into(),
-                total: "120.5".into(),
-                date: None,
-                estimated: false
+            input.read(today),
+            Ok(Handoff {
+                cost: Cost::Purchase {
+                    reference: "Lot 7".into(),
+                    total: "120.5".into(),
+                    estimated: false
+                },
+                purchased_on: None,
             })
         );
     }
 
     #[test]
-    fn after_queuing_a_rate_stays_and_a_purchase_clears() {
+    fn any_cost_takes_a_purchase_date_up_to_today() {
+        let today = day("2026-11-22");
+        let dated = |date: &str| {
+            QueueInput {
+                purchase_date: date.into(),
+                ..QueueInput::new()
+            }
+            .read(today)
+        };
+        let bought = dated(" 2026-03-14 ").unwrap();
+        assert_eq!(
+            bought,
+            Handoff {
+                cost: Cost::Estimate,
+                purchased_on: Some(day("2026-03-14")),
+            }
+        );
+        assert_eq!(
+            bought.described(),
+            "an estimate at the default 75% of market less $0.30 per card from the market on 2026-03-14"
+        );
+        assert_eq!(dated("2026-11-22").unwrap().purchased_on, Some(today));
+        assert_eq!(dated("").unwrap().purchased_on, None);
+        let f = QueueInput::FIELDS;
+        assert!(dated("2026-11-23").unwrap_err().has(f.purchase_date));
+        assert!(dated("2026-02-30").unwrap_err().has(f.purchase_date));
+    }
+
+    #[test]
+    fn after_queuing_a_rate_and_a_purchase_date_stay_and_a_purchase_clears() {
         let rate = QueueInput {
             cost: CostMethod::CostRate,
             market_percent: "60".into(),
+            purchase_date: "2026-03-14".into(),
             ..QueueInput::new()
         };
         assert_eq!(rate.after_queue().cost, CostMethod::CostRate);
         assert_eq!(rate.after_queue().market_percent, "60");
+        assert_eq!(rate.after_queue().purchase_date, "2026-03-14");
         let purchase = QueueInput {
             cost: CostMethod::PurchaseTotal,
             purchase_reference: "Lot".into(),
@@ -1093,11 +1176,14 @@ pub(crate) mod tests {
                 quantity: 3,
             },
         ];
-        let cost = Cost::Rate(CostRate {
-            market_rate: 0.6,
-            per_unit_deduction_cents: 50,
-        });
-        let q = Queue::entered(Workflow::PriceOnly, &cost, &expected, "abc");
+        let rate = Handoff {
+            cost: Cost::Rate(CostRate {
+                market_rate: 0.6,
+                per_unit_deduction_cents: 50,
+            }),
+            purchased_on: None,
+        };
+        let q = Queue::entered(Workflow::PriceOnly, &rate, &expected, "abc");
         assert_eq!(
             details(&q),
             serde_json::json!({
@@ -1108,15 +1194,18 @@ pub(crate) mod tests {
                 "expectedSellerKey": "abc"
             })
         );
-        let cost = Cost::Purchase {
-            reference: "Lot".into(),
-            total: "12".into(),
-            date: Some("2026-10-01".into()),
-            estimated: true,
+        let purchase = Handoff {
+            cost: Cost::Purchase {
+                reference: "Lot".into(),
+                total: "12".into(),
+                estimated: true,
+            },
+            purchased_on: Some(day("2026-10-01")),
         };
-        let q = Queue::entered(Workflow::Publish, &cost, &expected, "abc");
+        let q = Queue::entered(Workflow::Publish, &purchase, &expected, "abc");
         let json = details(&q);
         assert_eq!(json.get("estimatedCostRate"), None);
+        assert_eq!(json["purchaseDate"], "2026-10-01");
         assert_eq!(
             json["purchaseCost"],
             serde_json::json!({
@@ -1128,6 +1217,119 @@ pub(crate) mod tests {
                 "currency": "USD"
             })
         );
+    }
+
+    #[tokio::test]
+    #[ignore = "uses the dev database, in a transaction that is rolled back"]
+    async fn a_dated_batch_is_estimated_from_the_market_the_week_it_was_bought() {
+        use crate::features::{
+            inventory_economics::estimate,
+            inventory_intake::pending::{self, Change, Market, Place},
+        };
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(include_str!(
+            "../../../db/migrations/057_add_inventory_batch_purchase_dates.sql"
+        ))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query("DELETE FROM pending_inventory")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        // A SKU no catalog knows, counted at $1.00 today.
+        let sku = 2_100_000_007;
+        let counted = Market {
+            value: Some(1.0),
+            observed_at: Some(chrono::Utc::now()),
+            ..Market::UNAVAILABLE
+        };
+        let place = Place {
+            product_line_id: 1,
+            set_id: 1,
+            product_id: 2_100_000_007,
+        };
+        let set = Change::Set {
+            sku,
+            place,
+            quantity: 2,
+            seen: 0,
+            intake_at: chrono::Utc::now(),
+            market: counted,
+        };
+        pending::apply(&mut tx, "dated-batch-test:count", set)
+            .await
+            .unwrap();
+        let expected = [IntakeQuantity {
+            sku: sku.into(),
+            quantity: 2,
+        }];
+        let handoff = Handoff {
+            cost: Cost::Estimate,
+            purchased_on: Some(day("2026-03-04")),
+        };
+        let target = Target {
+            seller_key: "dated-batch-test-seller".into(),
+            ..Target::default()
+        };
+        let queue = Queue::entered(Workflow::PriceOnly, &handoff, &expected, &target.seller_key);
+        let config = serde_json::json!({});
+        let queued = queued(&mut tx, "dated-batch-test:queue", &queue, &target, &config)
+            .await
+            .unwrap();
+        let batch = queued.batch_number;
+        let seller = target.seller_key.as_str();
+
+        // Until its pricing has run, its price history may not be read: no market, no cost, not
+        // even the one queuing records for a batch without a purchase date.
+        let waiting = estimate::estimable(&mut *tx, seller, Some(&[batch]), 10)
+            .await
+            .unwrap();
+        assert_eq!(waiting[0].purchased_on, Some(day("2026-03-04")));
+        assert_eq!(waiting[0].receipts[0].market_value, None);
+        assert_eq!(waiting[0].current, None);
+
+        // Priced, with weeks before and after the purchase: the week it falls in is the market.
+        sqlx::query(
+            "INSERT INTO product_weekly_sales (sku_id, product_id, condition, week_start,
+              transactions, quantity, tcg_market_price)
+            VALUES ($1, $2, 'Near Mint', '2026-02-23', 1, 1, 3.00),
+              ($1, $2, 'Near Mint', '2026-03-02', 1, 1, 4.00),
+              ($1, $2, 'Near Mint', '2026-03-09', 1, 1, 9.00)",
+        )
+        .bind(sku)
+        .bind(place.product_id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "UPDATE inventory_batch_pricing_jobs SET status = 'completed' WHERE batch_number = $1",
+        )
+        .bind(batch)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        let priced = estimate::estimable(&mut *tx, seller, Some(&[batch]), 10)
+            .await
+            .unwrap();
+        let estimated = estimate::record_batch(&mut tx, seller, batch)
+            .await
+            .unwrap();
+        assert_eq!(estimated.recorded.len(), 1, "{priced:?} {estimated:?}");
+        // 75% of $4.00 less $0.30, for each of 2 cards.
+        assert_eq!(estimated.recorded[0].total_amount_cents, 2 * 270);
+        let purchased_at: Option<String> = sqlx::query_scalar(
+            "SELECT entry.purchased_at::text FROM inventory_purchase_cost_entries entry
+            WHERE entry.id::text = $1",
+        )
+        .bind(&estimated.recorded[0].entry_id)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+        assert_eq!(purchased_at.as_deref(), Some("2026-03-04"));
+        tx.rollback().await.unwrap();
     }
 
     #[test]
@@ -1156,7 +1358,21 @@ pub(crate) mod tests {
             uncosted_lot_count: 0,
             has_entered_cost: false,
             cost_rate: None,
+            purchased_on: None,
         }
+    }
+
+    #[test]
+    fn a_dated_batch_names_the_market_it_is_estimated_from() {
+        let dated = Run {
+            purchased_on: Some("2026-03-14".into()),
+            ..run(PricingStatus::Pricing, 0, 3)
+        };
+        assert_eq!(
+            dated.cost(),
+            "Cost not recorded yet; it will be estimated at the default 75% of market less $0.30 \
+             per card from the market on 2026-03-14 once every card has a market price"
+        );
     }
 
     #[test]

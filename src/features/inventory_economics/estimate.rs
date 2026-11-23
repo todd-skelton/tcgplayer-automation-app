@@ -1,11 +1,13 @@
 //! Estimated purchase costs, ported from `estimatedPurchaseCost.ts` and
 //! `recordEstimatedPurchaseCosts`: a batch with no entered purchase cost is costed at a share of
-//! each card's market price at intake, less a fixed amount per card. [`plan`] says what an estimate
-//! records; [`record_missing`] records the batches not yet costed, and [`change_rate`] estimates a
-//! batch again at a rate of its own.
+//! each card's market price at intake, less a fixed amount per card. A batch whose purchase date
+//! was entered is priced at each card's market price from that week of its price history instead,
+//! once its pricing has read that history. [`plan`] says what an estimate records;
+//! [`record_missing`] records the batches not yet costed, and [`change_rate`] estimates a batch
+//! again at a rate of its own.
 use std::{collections::BTreeMap, io::Write, path::PathBuf, time::Duration};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use corten::Signal;
 use serde::{Deserialize, Serialize};
 use tokio::time::{MissedTickBehavior, interval};
@@ -99,7 +101,8 @@ pub fn recorded_for(current_request_id: &str, request_id: &str) -> bool {
 pub struct Receipt {
     pub receipt_id: i32,
     pub original_quantity: i32,
-    /// The unit market at intake, or none when no quote was captured.
+    /// The unit market the estimate prices it at: from the week of the batch's purchase date when
+    /// it has one, else at intake; none when no quote is known yet.
     pub market_value: Option<f64>,
     pub intake_at: Option<DateTime<Utc>>,
     pub allocated_amount_cents: Option<f64>,
@@ -116,6 +119,8 @@ pub struct CurrentEstimate {
 pub struct Batch {
     pub batch_number: i32,
     pub cost_rate: Option<CostRate>,
+    /// The day its cards were bought, when it was entered.
+    pub purchased_on: Option<NaiveDate>,
     pub current: Option<CurrentEstimate>,
     pub receipts: Vec<Receipt>,
 }
@@ -171,12 +176,14 @@ impl std::fmt::Display for Refused {
     }
 }
 
-/// `estimateBatchPurchaseCost`: the batch's purchase cost, or the lots with no market at intake.
+/// `estimateBatchPurchaseCost`: the batch's purchase cost, or the lots with no market yet. It was
+/// bought on `purchased_on` when that was entered, else on the day its first card was counted.
 pub fn estimate(
     seller: &str,
     batch_number: i32,
     receipts: &[Receipt],
     rate: CostRate,
+    purchased_on: Option<NaiveDate>,
 ) -> Result<Result<(PurchaseCost, i64), Vec<i32>>, Refused> {
     if batch_number <= 0 {
         return Err(Refused::BatchNumber);
@@ -205,11 +212,15 @@ pub fn estimate(
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let purchased_at = receipts
-        .iter()
-        .filter_map(|r| r.intake_at)
-        .min()
-        .map(|at| at.format("%Y-%m-%d").to_string());
+    let purchased_at = purchased_on
+        .or_else(|| {
+            receipts
+                .iter()
+                .filter_map(|r| r.intake_at)
+                .min()
+                .map(|at| at.date_naive())
+        })
+        .map(|day| day.format("%Y-%m-%d").to_string());
     let unit_count = receipts
         .iter()
         .map(|r| i64::from(r.original_quantity))
@@ -251,7 +262,14 @@ pub fn plan(seller: &str, batches: &[Batch]) -> Result<Run, Refused> {
     let mut run = Run::default();
     for batch in batches {
         let rate = batch.cost_rate.unwrap_or(CostRate::DEFAULT);
-        let (mut cost, _) = match estimate(seller, batch.batch_number, &batch.receipts, rate)? {
+        let estimated = estimate(
+            seller,
+            batch.batch_number,
+            &batch.receipts,
+            rate,
+            batch.purchased_on,
+        )?;
+        let (mut cost, _) = match estimated {
             Ok(estimated) => estimated,
             Err(receipt_ids) => {
                 run.market_unavailable
@@ -303,9 +321,15 @@ struct Row {
     allocated_amount_cents: Option<f64>,
     cost_market_rate: Option<f64>,
     cost_per_unit_deduction_cents: Option<i32>,
+    purchased_on: Option<NaiveDate>,
 }
 
 /// `findEstimableBatchReceipts`: the seller's batches an estimate may cost, with their lots.
+///
+/// A lot's market is the one it was counted at, else its price history's at intake, else the
+/// seller's listing's. In a batch with a purchase date it is first its price history's market from
+/// the latest traded week on or before that date; and none until the batch's pricing, which reads
+/// that history, has run.
 pub async fn estimable(
     db: impl sqlx::PgExecutor<'_>,
     seller: &str,
@@ -339,7 +363,10 @@ pub async fn estimable(
         FROM inventory_purchase_cost_entries entry ORDER BY entry.series_id,entry.sequence DESC
       )
       SELECT link.batch_number,receipt.receipt_id,receipt.original_quantity,
-        COALESCE(receipt.market_value,
+        CASE WHEN purchase.purchased_on IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM inventory_batch_pricing_jobs job
+          WHERE job.batch_number=estimable.batch_number AND job.status IN ('completed','failed'))
+        THEN NULL ELSE COALESCE(dated.tcg_market_price,receipt.market_value,
           (SELECT weekly.tcg_market_price FROM product_weekly_sales weekly
            WHERE weekly.sku_id=receipt.sku AND weekly.tcg_market_price IS NOT NULL
              AND weekly.week_start<=COALESCE(receipt.intake_at::date,
@@ -349,15 +376,22 @@ pub async fn estimable(
           (SELECT observed.market_price FROM continuous_pricing_inventory observed
            WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.market_price IS NOT NULL LIMIT 1),
           (SELECT observed.current_price FROM continuous_pricing_inventory observed
-           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.current_price IS NOT NULL LIMIT 1))::float8 AS market_value,
+           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.current_price IS NOT NULL LIMIT 1)) END::float8 AS market_value,
         receipt.intake_at,current.id::text AS entry_id,current.request_id,
         allocation.allocated_amount_cents::float8 AS allocated_amount_cents,
         rate.market_rate::float8 AS cost_market_rate,
-        rate.per_unit_deduction_cents AS cost_per_unit_deduction_cents
+        rate.per_unit_deduction_cents AS cost_per_unit_deduction_cents,
+        purchase.purchased_on
       FROM estimable
       LEFT JOIN inventory_batch_estimated_cost_rates rate ON rate.batch_number=estimable.batch_number
+      LEFT JOIN inventory_batch_purchase_dates purchase ON purchase.batch_number=estimable.batch_number
       JOIN inventory_receipt_batch_links link ON link.batch_number=estimable.batch_number
       JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+      LEFT JOIN LATERAL (
+        SELECT weekly.tcg_market_price FROM product_weekly_sales weekly
+        WHERE weekly.sku_id=receipt.sku AND weekly.tcg_market_price IS NOT NULL
+          AND weekly.week_start<=purchase.purchased_on
+        ORDER BY weekly.week_start DESC LIMIT 1) dated ON TRUE
       LEFT JOIN current_entry current ON current.series_id=estimable.series_id
       LEFT JOIN inventory_purchase_cost_allocations allocation
         ON allocation.entry_id=current.id AND allocation.receipt_id=receipt.receipt_id
@@ -383,6 +417,7 @@ pub async fn estimable(
                         market_rate,
                         per_unit_deduction_cents: cents.into(),
                     }),
+                purchased_on: row.purchased_on,
                 current: None,
                 receipts: Vec::new(),
             });
@@ -596,6 +631,23 @@ pub async fn save_rate(
     .map(drop)
 }
 
+/// The day the batch's cards were bought, which its estimates price them at from now on.
+pub async fn save_purchase_date(
+    db: impl sqlx::PgExecutor<'_>,
+    batch_number: i32,
+    purchased_on: NaiveDate,
+) -> sqlx::Result<()> {
+    sqlx::query(
+        "INSERT INTO inventory_batch_purchase_dates (batch_number,purchased_on) VALUES ($1,$2)
+        ON CONFLICT (batch_number) DO UPDATE SET purchased_on=EXCLUDED.purchased_on",
+    )
+    .bind(batch_number)
+    .bind(purchased_on)
+    .execute(db)
+    .await
+    .map(drop)
+}
+
 /// `recordEstimatedPurchaseCosts` for one batch: its estimate at its rate, when it is the
 /// seller's and no entered purchase cost owns it.
 pub async fn record_batch(
@@ -708,6 +760,7 @@ mod tests {
                 lot(7, 1, Some(0.2), Some("2026-08-10T23:30:00Z")),
             ],
             CostRate::DEFAULT,
+            None,
         )
         .unwrap()
         .unwrap();
@@ -733,6 +786,7 @@ mod tests {
             13,
             &[lot(9, 2, Some(4.0), None)],
             CostRate::DEFAULT,
+            None,
         )
         .unwrap()
         .unwrap();
@@ -748,6 +802,7 @@ mod tests {
             12,
             &[lot(5, 3, Some(10.0), None)],
             SIXTY_LESS_FIFTY,
+            None,
         )
         .unwrap()
         .unwrap();
@@ -755,14 +810,30 @@ mod tests {
     }
 
     #[test]
+    fn a_batch_with_a_purchase_date_is_bought_that_day() {
+        let bought = NaiveDate::from_ymd_opt(2026, 3, 14);
+        let (cost, _) = estimate(
+            "seller-a",
+            12,
+            &[lot(5, 3, Some(10.0), Some("2026-08-11T03:00:00Z"))],
+            CostRate::DEFAULT,
+            bought,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(cost.purchased_at.as_deref(), Some("2026-03-14"));
+        assert_eq!(cost.total_amount_cents, 2160);
+    }
+
+    #[test]
     fn a_batch_with_an_unquoted_lot_is_not_estimated() {
         let lots = [lot(1, 1, Some(5.0), None), lot(2, 1, None, None)];
         assert_eq!(
-            estimate("seller-a", 14, &lots, CostRate::DEFAULT),
+            estimate("seller-a", 14, &lots, CostRate::DEFAULT, None),
             Ok(Err(vec![2]))
         );
         assert_eq!(
-            estimate("seller-a", 15, &[], CostRate::DEFAULT),
+            estimate("seller-a", 15, &[], CostRate::DEFAULT, None),
             Err(Refused::NoReceipts)
         );
     }
@@ -796,6 +867,7 @@ mod tests {
         let batch = |current: &str, allocated: f64, rate: Option<CostRate>| Batch {
             batch_number: 12,
             cost_rate: rate,
+            purchased_on: None,
             current: Some(CurrentEstimate {
                 entry_id: "41".into(),
                 request_id: current.into(),

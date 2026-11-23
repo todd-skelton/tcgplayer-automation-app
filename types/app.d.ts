@@ -39,6 +39,8 @@ export interface IntakeListing {
   searches: boolean;
   /** The sets the products are in, which each names by its place here. */
   sets: string[];
+  /** The thumbnail a row shows is a product's id between these two. */
+  thumbnail: string[];
   /** What a sealed product's one SKU is called. */
   unopened: string;
 }
@@ -111,6 +113,7 @@ declare module "corten/views" {
     condition: string;
     missing: boolean;
     picture: string;
+    thumbnail: string;
     set: string;
     sku_name: string;
     printing: string;
@@ -121,10 +124,10 @@ declare module "corten/views" {
     label: string;
     name: string;
     /** Writes every hole of `el` (a IntakeRow's root) from `data`. */
-    static fill(el: Element, data: { key: number; condition: string; missing: boolean; picture: string; set: string; sku_name: string; printing: string; form: string; sku: number; stock: string; count: number; label: string; name: string }): void;
+    static fill(el: Element, data: { key: number; condition: string; missing: boolean; picture: string; thumbnail: string; set: string; sku_name: string; printing: string; form: string; sku: number; stock: string; count: number; label: string; name: string }): void;
     /** The key of a IntakeRow's root (its key={key}). */
     static key(el: Element): string;
-    static keyOf(data: { key: number; condition: string; missing: boolean; picture: string; set: string; sku_name: string; printing: string; form: string; sku: number; stock: string; count: number; label: string; name: string }): string;
+    static keyOf(data: { key: number; condition: string; missing: boolean; picture: string; thumbnail: string; set: string; sku_name: string; printing: string; form: string; sku: number; stock: string; count: number; label: string; name: string }): string;
   }
   /** The view of #[component(view)] ItemCard: its holes, read from and written to the page. */
   export class ItemCard {
