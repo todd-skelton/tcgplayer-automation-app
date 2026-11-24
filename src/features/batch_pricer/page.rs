@@ -17,7 +17,8 @@ use super::{
 use crate::{
     database::Database,
     features::{
-        configuration, continuous_pricing::refresh::TcgPlayerSearch, shipping_configuration,
+        batch_pricing::manual_price::Review, configuration,
+        continuous_pricing::refresh::TcgPlayerSearch, shipping_configuration,
     },
     layout::Layout,
     tcgplayer::TcgPlayer,
@@ -68,11 +69,13 @@ pub(super) async fn success_rates(db: &Database) -> sqlx::Result<SuccessRates> {
     Ok(SuccessRates { low, high })
 }
 
-/// A batch as its panel draws it: the batch, its publications or why they could not be read, and
-/// the success rates its summary is judged by.
+/// A batch as its panel draws it: the batch, its publications or why they could not be read, its
+/// results left for manual review or why they could not be read, and the success rates its summary
+/// is judged by.
 pub struct Shown {
     pub batch: Batch,
     pub publications: Result<Publications, String>,
+    pub review: Result<Review, String>,
     pub rates: SuccessRates,
 }
 
@@ -82,11 +85,15 @@ impl Shown {
         batch: i32,
         rates: SuccessRates,
     ) -> Result<Shown, String> {
-        let (one, publications) =
-            tokio::join!(batches::one(db, batch), batches::publications(db, batch));
+        let (one, publications, review) = tokio::join!(
+            batches::one(db, batch),
+            batches::publications(db, batch),
+            batches::review(db, batch)
+        );
         Ok(Shown {
             batch: one?,
             publications,
+            review,
             rates,
         })
     }
@@ -100,7 +107,7 @@ impl Shown {
     /// nothing until it changes.
     pub fn version(&self) -> String {
         let mut hasher = DefaultHasher::new();
-        format!("{:?}{:?}", self.batch, self.publications).hash(&mut hasher);
+        format!("{:?}{:?}{:?}", self.batch, self.publications, self.review).hash(&mut hasher);
         format!("{:016x}", hasher.finish())
     }
 }
@@ -439,6 +446,7 @@ pub async fn live(
         rates,
         since: since.0,
         publications: None,
+        review: None,
         job: None,
         reads: 0,
         failures: 0,
@@ -457,7 +465,8 @@ pub async fn live(
 }
 
 /// A batch followed while it prices or publishes. Its publications are read when its pricing
-/// moves on, and every other read while one publishes: the preview is the slow read.
+/// moves on, and every other read while one publishes: the preview is the slow read. Its results
+/// left for review are read when its pricing moves on.
 struct Follow {
     db: Database,
     batch: i32,
@@ -465,6 +474,7 @@ struct Follow {
     /// The version the page shows.
     since: Option<String>,
     publications: Option<Result<Publications, String>>,
+    review: Option<Result<Review, String>>,
     /// The latest job and when the batch was last priced, as they were when the publications
     /// were read.
     job: Option<String>,
@@ -496,12 +506,16 @@ impl Follow {
                 batch.last_priced_at
             );
             let publishing = matches!(&self.publications, Some(Ok(p)) if p.active());
+            let moved_on = self.job.as_ref() != Some(&job);
             if self.publications.is_none()
-                || self.job.as_ref() != Some(&job)
+                || moved_on
                 || (publishing && self.reads.is_multiple_of(2))
             {
                 self.publications = Some(batches::publications(&self.db, self.batch).await);
                 self.job = Some(job);
+            }
+            if self.review.is_none() || moved_on {
+                self.review = Some(batches::review(&self.db, self.batch).await);
             }
             let shown = Shown {
                 batch,
@@ -509,6 +523,7 @@ impl Follow {
                     .publications
                     .clone()
                     .unwrap_or_else(|| Err(String::new())),
+                review: self.review.clone().unwrap_or_else(|| Err(String::new())),
                 rates: self.rates,
             };
             self.ended = !shown.following();

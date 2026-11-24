@@ -15,7 +15,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     database::Database,
     features::{
-        batch_pricing::queue,
+        batch_pricing::{
+            manual_price::{self, Review},
+            queue,
+        },
         continuous_pricing::scheduler,
         inventory_publication::{
             confirmation::{self, Ambiguous},
@@ -688,6 +691,15 @@ pub async fn publications(db: &Database, batch: i32) -> Result<Publications, Str
         publications,
         ambiguous,
     })
+}
+
+/// The batch's results left for manual review, the first of them listed.
+pub async fn review(db: &Database, batch: i32) -> Result<Review, String> {
+    let e = |e: sqlx::Error| e.to_string();
+    let mut conn = db.0.acquire().await.map_err(e)?;
+    manual_price::needing_review(&mut conn, batch)
+        .await
+        .map_err(e)
 }
 
 /// Which saved results: those priced, or those for manual review.

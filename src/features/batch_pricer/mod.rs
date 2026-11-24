@@ -1,7 +1,8 @@
 //! Batch Pricer: make a batch from a CSV export or a seller's live inventory, price it, follow
-//! its pricing as it runs, download its results, publish what is ready to Seller Portal, confirm
-//! an item Seller Portal left ambiguous once the operator has seen it live ([`repair`]), or delete
-//! it. Ported from `app/features/pending-inventory/routes/pending-inventory-pricer.tsx`.
+//! its pricing as it runs, download its results, price by hand a SKU its pricing left for manual
+//! review ([`manual_price`]), publish what is ready to Seller Portal, confirm an item Seller Portal
+//! left ambiguous once the operator has seen it live ([`repair`]), or delete it. Ported from
+//! `app/features/pending-inventory/routes/pending-inventory-pricer.tsx`.
 //!
 //! The batches are read, made from a CSV export or a seller's live inventory (read from
 //! TCGplayer's search), queued for pricing, planned for publication and deleted here, in the
@@ -19,6 +20,7 @@
 //! | `POST /pending-inventory-pricer/batches/{batch}/price` | pricing queued, every SKU or the errors |
 //! | `GET /pending-inventory-pricer/batches/{batch}/live` | the batch's panel each time it changes, while it prices or publishes |
 //! | `GET /pending-inventory-pricer/batches/{batch}/results` | its successful or manual-review rows as CSV |
+//! | `POST /pending-inventory-pricer/batches/{batch}/manual-price` | a manual-review SKU priced by hand |
 //! | `POST /pending-inventory-pricer/batches/{batch}/publish` | the selected SKUs planned for publication |
 //! | `POST /pending-inventory-pricer/batches/{batch}/publications/confirm` | an ambiguous item confirmed live |
 //! | `POST /pending-inventory-pricer/batches/{batch}/delete` | the batch deleted |
@@ -28,6 +30,7 @@
 //! browser names after its first page (`App::zoned_dates`); until then they are in UTC.
 mod batches;
 pub mod import;
+mod manual_price;
 mod page;
 mod repair;
 mod views;
@@ -35,6 +38,7 @@ mod views;
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
+use manual_price::enter_price;
 use page::{delete, download, import_csv, import_seller, live, price, publish, show};
 use repair::confirm_live;
 
@@ -69,6 +73,11 @@ pub mod url {
     pub struct Results {
         pub batch: i32,
         pub scope: Scope,
+    }
+
+    #[route("/pending-inventory-pricer/batches/{batch}/manual-price", post = enter_price)]
+    pub struct ManualPrice {
+        pub batch: i32,
     }
 
     #[route("/pending-inventory-pricer/batches/{batch}/publish", post = publish)]

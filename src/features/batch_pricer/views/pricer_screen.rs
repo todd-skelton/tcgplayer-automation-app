@@ -1,7 +1,6 @@
 use corten::prelude::*;
 
-use super::batch_panel::{BatchFollow, BatchProblem};
-use super::publication_repair::Refused;
+use super::batch_panel::{BatchFollow, BatchProblem, Refused};
 use crate::{
     features::batch_pricer::{
         batches::Batch,
@@ -30,7 +29,7 @@ pub struct SellerFormId;
 
 /// The screen: a new batch from a CSV export or a seller, the batch picker, the batch picked and
 /// its ambiguous publication items. What a post did shows in the layout's toaster; why one was
-/// refused, above the batch, or in the form it refused (`refused` for an ambiguous item's).
+/// refused, above the batch, or in the form it refused (`refused` for a per-SKU form's).
 #[component(css)]
 pub fn PricerScreen<'a>(
     list: &'a [Batch],

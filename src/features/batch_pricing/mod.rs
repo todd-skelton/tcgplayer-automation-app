@@ -7,6 +7,7 @@ pub mod cache;
 pub mod imported;
 pub mod job;
 pub mod jobs;
+pub mod manual_price;
 pub mod market;
 pub mod queue;
 pub mod results;
