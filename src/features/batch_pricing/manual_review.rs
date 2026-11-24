@@ -1,8 +1,12 @@
-//! A price the operator enters for a SKU its pricing left for manual review: one with no sales,
-//! market price or listing to price from, or one whose pricing reported an error. Entered, the
-//! result is successful at that price, so the batch can publish it and stops counting it for
-//! review; what pricing said is kept with it, under `manualPrice`. Pricing the whole batch again
-//! replaces it, as it replaces every result.
+//! The SKUs a batch's pricing left for manual review (one with no sales, market price or listing
+//! to price from, or one whose pricing reported an error) and what the operator decides for each:
+//! a price entered by hand, or the SKU taken out of the batch ([`removal`]).
+//!
+//! An entered price makes the result successful at that price, so the batch can publish it and
+//! stops counting it for review; what pricing said is kept with it, under `manualPrice`. Pricing
+//! the whole batch again replaces it, as it replaces every result.
+pub mod removal;
+
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
@@ -199,6 +203,19 @@ pub fn entered(
     (row, Value::Object(details))
 }
 
+/// Whether `batch` is queued or pricing, which would replace what is decided for a result, with
+/// the batch locked until the caller's transaction ends; `None` when there is no such batch.
+async fn pricing(conn: &mut PgConnection, batch: i32) -> sqlx::Result<Option<bool>> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM inventory_batch_pricing_jobs job
+           WHERE job.batch_number = b.batch_number AND job.status IN ('queued', 'pricing'))
+         FROM inventory_batches b WHERE b.batch_number = $1 FOR UPDATE",
+    )
+    .bind(batch)
+    .fetch_optional(&mut *conn)
+    .await
+}
+
 /// Enters `price` for its SKU's result in `batch`, refreshes the batch's counts and summary, all
 /// on `conn` (the caller's transaction). Refused while the batch is queued or pricing, or once the
 /// result no longer needs review.
@@ -208,15 +225,7 @@ pub async fn enter(
     price: &ManualPrice,
     now: DateTime<Utc>,
 ) -> Result<(), NotEntered> {
-    let pricing: Option<bool> = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM inventory_batch_pricing_jobs job
-           WHERE job.batch_number = b.batch_number AND job.status IN ('queued', 'pricing'))
-         FROM inventory_batches b WHERE b.batch_number = $1 FOR UPDATE",
-    )
-    .bind(batch)
-    .fetch_optional(&mut *conn)
-    .await?;
-    match pricing {
+    match pricing(conn, batch).await? {
         None => return Err(NotEntered::NotForReview),
         Some(true) => return Err(NotEntered::Pricing),
         Some(false) => {}

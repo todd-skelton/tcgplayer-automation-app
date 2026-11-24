@@ -1,8 +1,11 @@
-//! A price entered by hand for a SKU the batch's pricing left for manual review
-//! ([`manual_price`]): the price and, optionally, where it came from. Entered, the batch's panel is
-//! drawn again with the SKU ready to publish and its review count down by one; a price that cannot
-//! be read comes back in the SKU's form with why, and one the batch refuses (it is pricing, or the
-//! SKU no longer needs review) above the batch.
+//! What the operator decides for a SKU the batch's pricing left for manual review
+//! ([`manual_review`]): a price entered by hand, with where it came from, or the SKU removed from
+//! the batch as never in hand.
+//!
+//! Entered, the batch's panel is drawn again with the SKU ready to publish and its review count
+//! down by one; a price that cannot be read comes back in the SKU's form with why, and one the
+//! batch refuses (it is pricing, or the SKU no longer needs review) above the batch. Removed, the
+//! panel is drawn again without the SKU; a refused removal says why above the batch.
 use chrono::Utc;
 use corten::prelude::*;
 
@@ -14,7 +17,10 @@ use super::{
 use crate::{
     database::Database,
     features::{
-        batch_pricing::manual_price::{self, ManualPrice, NotEntered},
+        batch_pricing::manual_review::{
+            self, ManualPrice, NotEntered,
+            removal::{self, NotRemoved, Removed},
+        },
         inventory_economics::details::dollars_to_cents,
         inventory_intake::queue::dollars,
     },
@@ -84,7 +90,7 @@ impl ManualPriceInput {
 /// Enters the price in one transaction: the result and the batch's counts, or neither.
 async fn save(db: &Database, batch: i32, price: &ManualPrice) -> Result<(), NotEntered> {
     let mut tx = db.0.begin().await?;
-    manual_price::enter(&mut tx, batch, price, Utc::now()).await?;
+    manual_review::enter(&mut tx, batch, price, Utc::now()).await?;
     tx.commit().await?;
     Ok(())
 }
@@ -131,6 +137,45 @@ pub async fn enter_price(
     };
     req.invalid(&errors, form, || page(&req, &db, Some(at.batch), &drawn))
         .await
+}
+
+/// The SKU a removal names.
+#[derive(Clone, Debug, Default, Fields)]
+pub struct RemovalInput {
+    pub sku: i32,
+}
+
+/// Removes the SKU in one transaction: its item, result and receipts' reversal, and the batch's
+/// counts, or none of them.
+async fn take_out(db: &Database, batch: i32, sku: i32) -> Result<Removed, NotRemoved> {
+    let mut tx = db.0.begin().await?;
+    let removed = removal::remove(&mut tx, batch, sku, Utc::now()).await?;
+    tx.commit().await?;
+    Ok(removed)
+}
+
+/// What the operator is told a removal did.
+fn removed_said(batch: i32, sku: i32, removed: Removed) -> String {
+    match removed.units {
+        0 => format!("SKU {sku} removed from batch {batch}"),
+        1 => format!("SKU {sku} removed from batch {batch}; 1 unit marked never received"),
+        n => format!("SKU {sku} removed from batch {batch}; {n} units marked never received"),
+    }
+}
+
+/// The SKU removed and the batch drawn again with what it did, or why it was refused.
+pub async fn remove_sku(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::RemoveSku>,
+    Form(input): Form<RemovalInput>,
+) -> HtmlResult {
+    let done = match take_out(&db, at.batch, input.sku).await {
+        Ok(removed) => Ok(removed_said(at.batch, input.sku, removed)),
+        Err(NotRemoved::Database(error)) => return Err(error.into()),
+        Err(not) => Err(not.message(at.batch, input.sku)),
+    };
+    answer(&req, &db, at.batch, done).await
 }
 
 #[cfg(test)]
@@ -184,6 +229,20 @@ mod tests {
         assert_eq!(
             said(8652, &price),
             "SKU 123 in batch 8652 priced at $4.50 by hand"
+        );
+    }
+
+    #[test]
+    fn the_operator_is_told_what_a_removal_reversed() {
+        let said = |units| removed_said(8652, 123, Removed { units });
+        assert_eq!(said(0), "SKU 123 removed from batch 8652");
+        assert_eq!(
+            said(1),
+            "SKU 123 removed from batch 8652; 1 unit marked never received"
+        );
+        assert_eq!(
+            said(3),
+            "SKU 123 removed from batch 8652; 3 units marked never received"
         );
     }
 }

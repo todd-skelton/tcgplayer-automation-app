@@ -15,7 +15,7 @@ use crate::{
             Batch, BatchStatus, Job, JobStatus, Mode as Pricing, Progress, Publications, RunStatus,
             Scope,
         },
-        manual_price::ManualPriceInput,
+        manual_review::ManualPriceInput,
         page::{PriceInput, Shown, elapsed},
         repair::ConfirmInput,
         url,

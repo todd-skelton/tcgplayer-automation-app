@@ -2,18 +2,19 @@ use corten::{
     i18n::{Currency, Minor},
     prelude::*,
 };
+use corten_ui::dialog;
 
 use super::batch_panel::Refused;
 use crate::{
     features::{
         batch_pricer::{
-            manual_price::{MOST_NOTE, ManualPriceInput},
+            manual_review::{MOST_NOTE, ManualPriceInput, RemovalInput},
             page::Shown,
             url,
         },
-        batch_pricing::manual_price::NeedsReview,
+        batch_pricing::manual_review::NeedsReview,
     },
-    layout::{FormNotice, Notice},
+    layout::{DialogNotSent, FormNotice, Notice},
     text::Msg,
     theme::*,
     ui::{
@@ -21,6 +22,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardPanel, CardSize},
+        dialog::{Dialog, DialogFooter, DialogSize},
         field::Field,
         input::Input,
     },
@@ -33,10 +35,16 @@ struct ManualReviewTitleId;
 /// A SKU's price form, by the SKU: a refused price's answer replaces it.
 #[derive(Id)]
 pub struct ManualPriceFormId(pub i32);
+/// The dialog confirming a SKU's removal, by the SKU.
+#[derive(Id)]
+struct RemoveDialogId(i32);
+#[derive(Id)]
+struct RemoveHeadingId(i32);
 
-/// The SKUs the batch's pricing left for manual review, each with what pricing said and a form to
-/// price it by hand; nothing when there are none. Priced by hand, a SKU is ready to publish and no
-/// longer counts for review. The forms wait while the batch prices, which would replace the price.
+/// The SKUs the batch's pricing left for manual review, each with what pricing said, a form to
+/// price it by hand and a way to remove it when it was never in hand; nothing when there are none.
+/// Priced by hand, a SKU is ready to publish and no longer counts for review. Both wait while the
+/// batch prices, which would replace the price.
 #[component(css)]
 pub fn ManualReview<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) -> impl Render {
     let batch = shown.batch.batch_number;
@@ -63,11 +71,11 @@ pub fn ManualReview<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) 
                     >
                         <h2 id={ManualReviewTitleId}>"Manual review"</h2>
                         <p class={muted()}>
-                            "Pricing could not price these SKUs. Enter a price for each to list it; it can then be published from the batch's actions. Pricing the whole batch again replaces prices entered here."
+                            "Pricing could not price these SKUs. Enter a price for each to list it; it can then be published from the batch's actions. Pricing the whole batch again replaces prices entered here. A SKU added by mistake, never in hand, can be removed from the batch instead."
                         </p>
                         if pricing {
                             <Notice variant={AlertVariant::Info}>
-                                "Prices can be entered once the batch's pricing ends."
+                                "Prices can be entered, or SKUs removed, once the batch's pricing ends."
                             </Notice>
                         }
                         if review.total > review.listed.len() as i64 {
@@ -158,8 +166,62 @@ fn ReviewItem<'a>(
                     input={refused.map_or(&blank, |(input, _)| input)}
                     errors={refused.map_or(none, |(_, errors)| errors)}
                 />
+                <div>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        type="button"
+                        command="show-modal"
+                        commandfor={RemoveDialogId(item.sku)}
+                    >
+                        "Remove from batch"
+                    </button>
+                </div>
+                <RemoveDialog batch={batch} item={item} />
             }
         </article>
+    }
+}
+
+/// Confirms a SKU's removal: it leaves the batch, and what was received of it is marked never
+/// received.
+#[component(css = ManualReview)]
+fn RemoveDialog<'a>(batch: i32, item: &'a NeedsReview) -> impl Render {
+    let said = refs();
+    let sku = item.sku;
+    html! {
+        <dialog
+            id={RemoveDialogId(sku)}
+            aria-labelledby={RemoveHeadingId(sku)}
+            class={Dialog { size: DialogSize::Sm }}
+            on:corten:error={dialog::failed(event, target, said)}
+        >
+            <h2 id={RemoveHeadingId(sku)}>"Remove SKU "{sku}" from batch "{batch}"?"</h2>
+            <p>
+                "Only for a card that was never in hand. The SKU leaves the batch, and what was received of it ("
+                {item.quantity}
+                " quantity) is marked never received, so it is neither pending nor counted in the batch's cost. This cannot be undone."
+            </p>
+            <DialogNotSent said={said} />
+            <form
+                method="post"
+                action={url::RemoveSku { batch }}
+                data-patch
+                class={DialogFooter {}}
+            >
+                <input type="hidden" name={RemovalInput::FIELDS.sku} value={sku}>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    type="button"
+                    command="close"
+                    commandfor={RemoveDialogId(sku)}
+                >
+                    "Cancel"
+                </button>
+                <button class={Button { variant: ButtonVariant::Destructive, size: ButtonSize::Md }}>
+                    "Remove from batch"
+                </button>
+            </form>
+        </dialog>
     }
 }
 

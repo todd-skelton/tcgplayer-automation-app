@@ -16,7 +16,7 @@ use crate::{
     database::Database,
     features::{
         batch_pricing::{
-            manual_price::{self, Review},
+            manual_review::{self, Review},
             queue,
         },
         continuous_pricing::scheduler,
@@ -697,7 +697,7 @@ pub async fn publications(db: &Database, batch: i32) -> Result<Publications, Str
 pub async fn review(db: &Database, batch: i32) -> Result<Review, String> {
     let e = |e: sqlx::Error| e.to_string();
     let mut conn = db.0.acquire().await.map_err(e)?;
-    manual_price::needing_review(&mut conn, batch)
+    manual_review::needing_review(&mut conn, batch)
         .await
         .map_err(e)
 }
