@@ -4,6 +4,7 @@ use corten::{
     prelude::*,
 };
 
+use super::batch_panel::Refused;
 use crate::{
     features::{
         batch_pricer::{
@@ -32,11 +33,7 @@ struct PublicationRepairTitleId;
 pub struct ConfirmLiveFormId(pub i64);
 
 /// An ambiguous item's confirmation refused: the form as it was sent, and why.
-#[derive(Clone, Copy)]
-pub struct Refused<'a> {
-    pub input: &'a ConfirmInput,
-    pub errors: &'a Errors,
-}
+type RefusedConfirmation<'a> = (&'a ConfirmInput, &'a Errors);
 
 /// The batch's publication items Seller Portal left ambiguous, each with a form to confirm it
 /// live when it adds received inventory; nothing when there are none. Part of the batch's panel,
@@ -53,6 +50,10 @@ pub fn PublicationRepair<'a>(
         .map_or(&[][..], |p| p.ambiguous.as_slice());
     let batch = shown.batch.batch_number;
     let none = Errors::new();
+    let refused = match refused {
+        Some(Refused::Confirmation { input, errors }) => Some((input, errors)),
+        _ => None,
+    };
     html! {
         if !items.is_empty() {
             <section
@@ -67,7 +68,7 @@ pub fn PublicationRepair<'a>(
                     <AmbiguousItem
                         batch={batch}
                         item={item}
-                        refused={refused.filter(|r| r.input.item == item.item_id)}
+                        refused={refused.filter(|(input, _)| input.item == item.item_id)}
                         none={&none}
                         t={t}
                     />
@@ -82,7 +83,7 @@ pub fn PublicationRepair<'a>(
 fn AmbiguousItem<'a>(
     batch: i32,
     item: &'a Ambiguous,
-    refused: Option<Refused<'a>>,
+    refused: Option<RefusedConfirmation<'a>>,
     none: &'a Errors,
     t: Msg,
 ) -> impl Render {
@@ -126,9 +127,9 @@ fn AmbiguousItem<'a>(
             if item.confirmable() {
                 <ConfirmForm
                     batch={batch}
-                    input={refused.map_or(&blank, |r| r.input)}
+                    input={refused.map_or(&blank, |(input, _)| input)}
                     earliest={Some(item.earliest())}
-                    errors={refused.map_or(none, |r| r.errors)}
+                    errors={refused.map_or(none, |(_, errors)| errors)}
                     t={t}
                 />
             } else {

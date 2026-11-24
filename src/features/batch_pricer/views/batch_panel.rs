@@ -5,7 +5,8 @@ use corten_ui::{Tooltip, dialog};
 
 use super::{
     batch_summary::BatchSummary,
-    publication_repair::{PublicationRepair, Refused},
+    manual_review::ManualReview,
+    publication_repair::PublicationRepair,
     publish_dialog::{PublishDialog, PublishDialogId},
 };
 use crate::{
@@ -14,7 +15,9 @@ use crate::{
             Batch, BatchStatus, Job, JobStatus, Mode as Pricing, Progress, Publications, RunStatus,
             Scope,
         },
+        manual_price::ManualPriceInput,
         page::{PriceInput, Shown, elapsed},
+        repair::ConfirmInput,
         url,
     },
     layout::{DialogNotSent, Notice},
@@ -46,6 +49,22 @@ struct DeleteDialogId;
 #[derive(Id)]
 struct DeleteHeadingId;
 
+/// One of the batch's per-SKU forms the last post refused: what it sent, and why. The panel draws
+/// that form again with them.
+#[derive(Clone, Copy)]
+pub enum Refused<'a> {
+    /// An ambiguous publication item's confirmation that it went live.
+    Confirmation {
+        input: &'a ConfirmInput,
+        errors: &'a Errors,
+    },
+    /// A price entered by hand for a SKU left for manual review.
+    Price {
+        input: &'a ManualPriceInput,
+        errors: &'a Errors,
+    },
+}
+
 /// Why the last post on the batch was refused, above it; empty when it was not.
 #[component]
 pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
@@ -60,7 +79,7 @@ pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
 
 /// The batch shown and, while it prices or publishes, the stream that sends its panel again each
 /// time it changes. A post's answer replaces it, so a batch that starts pricing is followed.
-/// `refused` is an ambiguous item's confirmation drawn again with why.
+/// `refused` is a per-SKU form drawn again with why.
 #[component]
 pub fn BatchFollow<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) -> impl Patch {
     html! {
@@ -80,8 +99,8 @@ pub fn BatchFollow<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) -
 }
 
 /// Everything about the batch that changes as it prices or publishes: its card, the actions it
-/// allows now, its progress, the items its publications left ambiguous, its summary and the
-/// dialogs its actions open.
+/// allows now, its progress, the items its publications left ambiguous, the SKUs its pricing left
+/// for manual review, its summary and the dialogs its actions open.
 #[component(css)]
 pub fn BatchPanel<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) -> impl Patch {
     let batch = &shown.batch;
@@ -202,6 +221,7 @@ pub fn BatchPanel<'a>(shown: &'a Shown, refused: Option<Refused<'a>>, t: Msg) ->
                 </Notice>
             }
             <PublicationRepair shown={shown} refused={refused} t={t} />
+            <ManualReview shown={shown} refused={refused} t={t} />
             if let Some(summary) = &batch.summary {
                 <p class={muted()}>"Current batch summary for the saved pricing results."</p>
                 <BatchSummary

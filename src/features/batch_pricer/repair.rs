@@ -172,7 +172,7 @@ pub async fn confirm_live(
         t,
     };
     let drawn = Drawn {
-        refused: Some(Refused {
+        refused: Some(Refused::Confirmation {
             input: &input,
             errors: &errors,
         }),
