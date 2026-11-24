@@ -17,7 +17,7 @@ use super::{
 use crate::{
     database::Database,
     features::{
-        batch_pricing::manual_price::Review, configuration,
+        batch_pricing::manual_review::Review, configuration,
         continuous_pricing::refresh::TcgPlayerSearch, shipping_configuration,
     },
     layout::Layout,
